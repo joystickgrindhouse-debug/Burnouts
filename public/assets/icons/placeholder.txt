@@ -1,0 +1,6 @@
+Note: Icon files (arms.png, legs.png, core.png, cardio.png) should be placed here.
+Descriptions:
+- arms.png: Bicep flex silhouette, red accent, flat style
+- legs.png: Squat silhouette, red accent, flat style
+- core.png: Abs crunch silhouette, red accent, flat style
+- cardio.png: Jumping jack silhouette, red accent, flat style
