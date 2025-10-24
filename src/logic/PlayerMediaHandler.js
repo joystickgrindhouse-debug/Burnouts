@@ -28,13 +28,18 @@ export default function PlayerMediaHandler({ userId, onPoseUpdate }) {
   useEffect(() => {
     if (!mediaPose) return;
 
+    let lastFirestoreUpdate = 0;
+    const FIRESTORE_THROTTLE_MS = 2000;
+
     const updatePose = async () => {
       const poseData = mediaPose.getPoseData();
       
       if (poseData) {
         onPoseUpdate?.(poseData);
         
-        if (userId) {
+        const now = Date.now();
+        if (userId && (now - lastFirestoreUpdate) >= FIRESTORE_THROTTLE_MS) {
+          lastFirestoreUpdate = now;
           try {
             await setDoc(doc(db, "poseData", userId), poseData, { merge: true });
           } catch (error) {
