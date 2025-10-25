@@ -165,35 +165,49 @@ export class MediaPose {
     };
   }
 
-  // Optional: Draw skeleton overlay
+  // Setup canvas for visualization
   setupCanvas(canvasElement) {
     this.canvasElement = canvasElement;
     this.canvasCtx = canvasElement.getContext("2d");
   }
 
+  // Get video element for rendering
+  getVideoElement() {
+    return this.videoElement;
+  }
+
   drawPose() {
-    if (!this.canvasElement || !this.canvasCtx || !this.landmarks) {
+    if (!this.canvasElement || !this.canvasCtx || !this.videoElement) {
       return;
     }
 
-    const drawingUtils = new DrawingUtils(this.canvasCtx);
-    
-    // Clear canvas
-    this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
+    const ctx = this.canvasCtx;
+    const canvas = this.canvasElement;
 
-    // Draw landmarks and connectors
+    // Draw video frame first (mirrored for natural view)
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(this.videoElement, -canvas.width, 0, canvas.width, canvas.height);
+    ctx.restore();
+
+    // Draw skeleton overlay if landmarks detected
     if (this.landmarks && this.landmarks.length > 0) {
-      drawingUtils.drawLandmarks(this.landmarks, {
-        radius: 5,
-        fillColor: "#FF4444",
-        color: "#FF4444"
-      });
+      const drawingUtils = new DrawingUtils(ctx);
 
+      // Draw connectors (skeleton lines)
       drawingUtils.drawConnectors(
         this.landmarks,
         PoseLandmarker.POSE_CONNECTIONS,
-        { color: "#00FF00", lineWidth: 2 }
+        { color: "#00FF00", lineWidth: 3 }
       );
+
+      // Draw landmarks (joint points)
+      drawingUtils.drawLandmarks(this.landmarks, {
+        radius: 6,
+        fillColor: "#FF4444",
+        color: "#FFFFFF",
+        lineWidth: 2
+      });
     }
   }
 

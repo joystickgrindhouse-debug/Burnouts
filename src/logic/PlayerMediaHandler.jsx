@@ -51,12 +51,25 @@ export default function PlayerMediaHandler({ userId, onPoseUpdate }) {
         if (userId && (now - lastFirestoreUpdate) >= FIRESTORE_THROTTLE_MS) {
           lastFirestoreUpdate = now;
           try {
-            // Save essential pose metrics to Firestore
+            // Save complete pose data to Firestore
             const firestoreData = {
+              // Pose metrics
               rotationY: poseData.rotationY,
               positionY: poseData.positionY,
               activity: poseData.activity,
+              
+              // All 33 landmarks (x, y, z coordinates + visibility)
+              landmarks: poseData.landmarks ? poseData.landmarks.map(lm => ({
+                x: lm.x,
+                y: lm.y,
+                z: lm.z,
+                visibility: lm.visibility
+              })) : [],
+              
+              // Key body points for quick access
               bodyPoints: poseData.bodyPoints,
+              
+              // Status
               isDetected: true,
               updatedAt: poseData.updatedAt
             };
