@@ -14,18 +14,29 @@ export default function BurnoutsApp() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        setLoading(false);
-      } else {
-        window.location.href = "https://rivalishub.netlify.app";
-      }
+      setUser(currentUser);
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!loading && !user) {
+      const timer = setTimeout(() => {
+        window.location.href = "https://rivalishub.netlify.app";
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, user]);
+
   if (loading) return <div className="loading">Loading...</div>;
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="loading">
+        <p>Not authenticated. Redirecting to login...</p>
+      </div>
+    );
+  }
 
   return (
     <BurnoutsSession 
