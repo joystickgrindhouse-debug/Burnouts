@@ -1,35 +1,62 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { auth, db } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
 import { getDoc, doc } from "firebase/firestore";
 import PlayerMediaHandler from "./logic/PlayerMediaHandler";
 import { shuffleDeck, updateUserStats, finalizeSession } from "./logic/burnoutsHelpers";
 
 export default function BurnoutsApp() {
   const { muscleGroup } = useParams();
+  const [searchParams] = useSearchParams();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
   const [poseData, setPoseData] = useState(null);
 
   useEffect(() => {
+    const token = searchParams.get('token');
+    
+    if (token) {
+      signInWithCustomToken(auth, token)
+        .then(() => {
+          console.log('Successfully signed in with token');
+        })
+        .catch((error) => {
+          console.error('Error signing in with token:', error);
+          setAuthError(error.message);
+          setLoading(false);
+        });
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
+    
     return () => unsubscribe();
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !searchParams.get('token')) {
       const timer = setTimeout(() => {
         window.location.href = "https://rivalishub.netlify.app";
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [loading, user]);
+  }, [loading, user, searchParams]);
 
   if (loading) return <div className="loading">Loading...</div>;
+  
+  if (authError) {
+    return (
+      <div className="loading">
+        <p>Authentication Error: {authError}</p>
+        <p>Redirecting to login...</p>
+      </div>
+    );
+  }
+  
   if (!user) {
     return (
       <div className="loading">

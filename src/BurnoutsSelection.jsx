@@ -1,7 +1,25 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
+import { auth } from "./firebase";
+import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
 
 export default function BurnoutsSelection() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const token = searchParams.get('token');
+    
+    if (token) {
+      signInWithCustomToken(auth, token)
+        .then(() => {
+          console.log('Successfully signed in with token on selection page');
+        })
+        .catch((error) => {
+          console.error('Error signing in with token:', error);
+        });
+    }
+  }, [searchParams]);
 
   const selectMuscleGroup = (group) => {
     navigate(`/burnouts/${group}`);
