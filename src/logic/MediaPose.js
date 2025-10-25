@@ -1,34 +1,62 @@
+import { PoseLandmarker, FilesetResolver, DrawingUtils } from "@mediapipe/tasks-vision";
+
 export class MediaPose {
   constructor() {
     this.stream = null;
     this.videoElement = null;
     this.isActive = false;
-    this.canvas = null;
-    this.context = null;
-    this.previousImageData = null;
+    this.poseLandmarker = null;
+    this.lastVideoTime = -1;
+    this.landmarks = null;
+    this.worldLandmarks = null;
+    this.canvasElement = null;
+    this.canvasCtx = null;
   }
 
   async init() {
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: 640, 
-          height: 480 
-        } 
+      // Initialize MediaPipe Vision
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      );
+
+      // Create PoseLandmarker
+      this.poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+          delegate: "GPU"
+        },
+        runningMode: "VIDEO",
+        numPoses: 1,
+        minPoseDetectionConfidence: 0.5,
+        minPosePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5
       });
-      
+
+      // Set up webcam
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: 640,
+          height: 480,
+          facingMode: "user"
+        }
+      });
+
       this.videoElement = document.createElement("video");
       this.videoElement.autoplay = true;
       this.videoElement.playsInline = true;
       this.videoElement.srcObject = this.stream;
-      
-      this.canvas = document.createElement("canvas");
-      this.canvas.width = 640;
-      this.canvas.height = 480;
-      this.context = this.canvas.getContext("2d");
-      
+
+      // Wait for video to be ready
+      await new Promise((resolve) => {
+        this.videoElement.onloadedmetadata = () => {
+          this.videoElement.play();
+          resolve();
+        };
+      });
+
       this.isActive = true;
-      
+      console.log("MediaPipe Pose initialized successfully");
       return true;
     } catch (error) {
       console.error("MediaPose initialization error:", error);
@@ -37,58 +65,135 @@ export class MediaPose {
   }
 
   getPoseData() {
-    if (!this.isActive || !this.videoElement || !this.context) {
+    if (!this.isActive || !this.videoElement || !this.poseLandmarker) {
       return null;
     }
 
     try {
-      this.context.drawImage(this.videoElement, 0, 0, this.canvas.width, this.canvas.height);
-      const imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+      const currentTime = performance.now();
       
-      let changedPixels = 0;
-      let totalMotion = 0;
-      const THRESHOLD = 30;
-      
-      if (this.previousImageData) {
-        const numPixels = imageData.data.length / 4;
+      // Only process new frames
+      if (this.videoElement.currentTime !== this.lastVideoTime) {
+        this.lastVideoTime = this.videoElement.currentTime;
         
-        for (let i = 0; i < imageData.data.length; i += 4) {
-          const rDiff = Math.abs(imageData.data[i] - this.previousImageData.data[i]);
-          const gDiff = Math.abs(imageData.data[i + 1] - this.previousImageData.data[i + 1]);
-          const bDiff = Math.abs(imageData.data[i + 2] - this.previousImageData.data[i + 2]);
-          const avgDiff = (rDiff + gDiff + bDiff) / 3;
-          
-          if (avgDiff > THRESHOLD) {
-            changedPixels++;
-            totalMotion += avgDiff;
-          }
+        const results = this.poseLandmarker.detectForVideo(
+          this.videoElement,
+          currentTime
+        );
+
+        if (results.landmarks && results.landmarks.length > 0) {
+          this.landmarks = results.landmarks[0];
+          this.worldLandmarks = results.worldLandmarks?.[0] || null;
+
+          // Calculate pose-based metrics
+          const poseMetrics = this.calculatePoseMetrics(this.landmarks);
+
+          return {
+            landmarks: this.landmarks,
+            worldLandmarks: this.worldLandmarks,
+            ...poseMetrics,
+            updatedAt: Date.now(),
+            isDetected: true
+          };
         }
-        
-        const motionPercentage = changedPixels / numPixels;
-        const avgIntensity = changedPixels > 0 ? (totalMotion / changedPixels) / 255 : 0;
-        
-        this.previousImageData = imageData;
-
-        const rotationY = Math.min(Math.max((motionPercentage * 50) - 1.5, -1), 1);
-        const positionY = Math.min(Math.max(((avgIntensity - 0.1) / 0.2), -1), 1);
-
-        return {
-          rotationY,
-          positionY,
-          updatedAt: Date.now(),
-        };
       }
-      
-      this.previousImageData = imageData;
-      
+
       return {
-        rotationY: 0,
-        positionY: 0,
-        updatedAt: Date.now(),
+        landmarks: null,
+        worldLandmarks: null,
+        isDetected: false,
+        updatedAt: Date.now()
       };
     } catch (error) {
       console.error("Error getting pose data:", error);
       return null;
+    }
+  }
+
+  calculatePoseMetrics(landmarks) {
+    if (!landmarks || landmarks.length < 33) {
+      return {
+        rotationY: 0,
+        positionY: 0,
+        activity: 0
+      };
+    }
+
+    // Get key body points
+    const leftShoulder = landmarks[11];
+    const rightShoulder = landmarks[12];
+    const leftHip = landmarks[23];
+    const rightHip = landmarks[24];
+    const nose = landmarks[0];
+
+    // Calculate body rotation (based on shoulder alignment)
+    const shoulderDiff = leftShoulder.x - rightShoulder.x;
+    const rotationY = Math.max(-1, Math.min(1, shoulderDiff * 2));
+
+    // Calculate vertical position (based on hip height)
+    const avgHipY = (leftHip.y + rightHip.y) / 2;
+    const positionY = Math.max(-1, Math.min(1, (0.6 - avgHipY) * 2));
+
+    // Calculate activity level (movement intensity)
+    const shoulderMidpoint = {
+      x: (leftShoulder.x + rightShoulder.x) / 2,
+      y: (leftShoulder.y + rightShoulder.y) / 2
+    };
+    const hipMidpoint = {
+      x: (leftHip.x + rightHip.x) / 2,
+      y: (leftHip.y + rightHip.y) / 2
+    };
+    
+    const torsoLength = Math.sqrt(
+      Math.pow(shoulderMidpoint.x - hipMidpoint.x, 2) +
+      Math.pow(shoulderMidpoint.y - hipMidpoint.y, 2)
+    );
+    
+    const activity = Math.max(0, Math.min(1, torsoLength * 3));
+
+    return {
+      rotationY,
+      positionY,
+      activity,
+      bodyPoints: {
+        nose: { x: nose.x, y: nose.y, z: nose.z },
+        leftShoulder: { x: leftShoulder.x, y: leftShoulder.y, z: leftShoulder.z },
+        rightShoulder: { x: rightShoulder.x, y: rightShoulder.y, z: rightShoulder.z },
+        leftHip: { x: leftHip.x, y: leftHip.y, z: leftHip.z },
+        rightHip: { x: rightHip.x, y: rightHip.y, z: rightHip.z }
+      }
+    };
+  }
+
+  // Optional: Draw skeleton overlay
+  setupCanvas(canvasElement) {
+    this.canvasElement = canvasElement;
+    this.canvasCtx = canvasElement.getContext("2d");
+  }
+
+  drawPose() {
+    if (!this.canvasElement || !this.canvasCtx || !this.landmarks) {
+      return;
+    }
+
+    const drawingUtils = new DrawingUtils(this.canvasCtx);
+    
+    // Clear canvas
+    this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
+
+    // Draw landmarks and connectors
+    if (this.landmarks && this.landmarks.length > 0) {
+      drawingUtils.drawLandmarks(this.landmarks, {
+        radius: 5,
+        fillColor: "#FF4444",
+        color: "#FF4444"
+      });
+
+      drawingUtils.drawConnectors(
+        this.landmarks,
+        PoseLandmarker.POSE_CONNECTIONS,
+        { color: "#00FF00", lineWidth: 2 }
+      );
     }
   }
 
@@ -101,6 +206,11 @@ export class MediaPose {
       this.videoElement.srcObject = null;
       this.videoElement = null;
     }
+    if (this.poseLandmarker) {
+      this.poseLandmarker.close();
+      this.poseLandmarker = null;
+    }
     this.isActive = false;
+    console.log("MediaPipe Pose stopped");
   }
 }
