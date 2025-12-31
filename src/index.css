@@ -18,7 +18,7 @@ body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   background: #000;
-  background-image: url('@assets/generated_images/red-and-black-gym-background.png');
+  background-image: url('/assets/generated_images/red-and-black-gym-background.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
