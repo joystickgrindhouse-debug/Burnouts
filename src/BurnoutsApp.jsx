@@ -1,96 +1,27 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import { auth, db } from "./firebase";
-import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
-import { getDoc, doc } from "firebase/firestore";
-import PlayerMediaHandler from "./logic/PlayerMediaHandler";
-import { shuffleDeck, updateUserStats, finalizeSession } from "./logic/burnoutsHelpers";
+import { useParams } from "react-router-dom";
+import { shuffleDeck } from "./logic/burnoutsHelpers";
 
 export default function BurnoutsApp() {
   const { muscleGroup } = useParams();
-  const [searchParams] = useSearchParams();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState(null);
-  const [poseData, setPoseData] = useState(null);
-
-  useEffect(() => {
-    const token = searchParams.get('token');
-    
-    if (token) {
-      signInWithCustomToken(auth, token)
-        .then(() => {
-          console.log('Successfully signed in with token');
-        })
-        .catch((error) => {
-          console.error('Error signing in with token:', error);
-          setAuthError(error.message);
-          setLoading(false);
-        });
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-    
-    return () => unsubscribe();
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (!loading && !user && !searchParams.get('token')) {
-      const timer = setTimeout(() => {
-        window.location.href = "https://rivalishub.netlify.app";
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, user, searchParams]);
+  const [loading, setLoading] = useState(false);
 
   if (loading) return <div className="loading">Loading...</div>;
-  
-  if (authError) {
-    return (
-      <div className="loading">
-        <p>Authentication Error: {authError}</p>
-        <p>Redirecting to login...</p>
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return (
-      <div className="loading">
-        <p>Not authenticated. Redirecting to login...</p>
-      </div>
-    );
-  }
 
   return (
     <BurnoutsSession 
-      userId={user.uid} 
       muscleGroup={muscleGroup} 
-      poseData={poseData} 
-      setPoseData={setPoseData} 
     />
   );
 }
 
-function BurnoutsSession({ userId, muscleGroup, poseData, setPoseData }) {
+function BurnoutsSession({ muscleGroup }) {
   const [deck, setDeck] = useState(shuffleDeck(muscleGroup));
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [totalReps, setTotalReps] = useState(0);
   const [diceEarned, setDiceEarned] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [sessionActive, setSessionActive] = useState(true);
-  const [avatarUrl, setAvatarUrl] = useState(null);
-
-  useEffect(() => {
-    const fetchAvatar = async () => {
-      const docSnap = await getDoc(doc(db, "users", userId));
-      if (docSnap.exists()) setAvatarUrl(docSnap.data().avatarUrl);
-    };
-    fetchAvatar();
-  }, [userId]);
 
   const completeCard = (reps) => {
     const adjustedReps = reps * multiplier;
@@ -100,17 +31,13 @@ function BurnoutsSession({ userId, muscleGroup, poseData, setPoseData }) {
       setDiceEarned(prev => prev + 1 * multiplier);
     }
 
-    updateUserStats(userId, totalReps + adjustedReps, diceEarned, muscleGroup);
-
-    setTimeout(() => setCurrentCardIndex(prev => prev + 1), 5000);
+    setTimeout(() => setCurrentCardIndex(prev => prev + 1), 500);
   };
 
   const endSession = () => {
     setSessionActive(false);
-    finalizeSession(userId, totalReps, diceEarned, muscleGroup);
-
     alert(`Session Complete!\nReps: ${totalReps}\nCards: ${currentCardIndex + 1}\nDice: ${diceEarned}`);
-    setTimeout(() => window.location.href = "https://rivalishub.netlify.app", 3000);
+    setTimeout(() => window.location.href = "/", 3000);
   };
 
   const replayDeck = () => {
@@ -124,14 +51,6 @@ function BurnoutsSession({ userId, muscleGroup, poseData, setPoseData }) {
 
   return (
     <div className="burnouts-container">
-      <PlayerMediaHandler userId={userId} onPoseUpdate={setPoseData} />
-
-      {avatarUrl && (
-        <div className="avatar-container">
-          <img src={avatarUrl} alt="User Avatar" className="burnouts-avatar" />
-        </div>
-      )}
-
       <div className="deck-view">
         {currentCardIndex < deck.length && currentCard ? (
           <div className="card">
