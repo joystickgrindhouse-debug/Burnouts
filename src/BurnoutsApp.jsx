@@ -26,28 +26,11 @@ function calculateDistance(a, b) {
 
 export default function BurnoutsApp() {
     const { muscleGroup } = useParams();
-    const [searchParams] = useSearchParams();
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [authError, setAuthError] = useState(null);
+    
+    // Using a static userId since authentication is handled by the Hub
+    const userId = "hub_user";
 
-    useEffect(() => {
-        const token = searchParams.get('token');
-        if (token) {
-            signInWithCustomToken(auth, token).catch((error) => {
-                console.error('Error signing in with token:', error);
-            });
-        }
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser || { uid: 'guest', isAnonymous: true });
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, [searchParams]);
-
-    if (loading) return <div className="loading">LOADING...</div>;
-
-    return <BurnoutsSession userId={user?.uid || 'guest'} muscleGroup={muscleGroup} />;
+    return <BurnoutsSession userId={userId} muscleGroup={muscleGroup} />;
 }
 
 function BurnoutsSession({ userId, muscleGroup }) {
