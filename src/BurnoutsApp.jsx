@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { auth, db } from "./firebase";
-import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { getDoc, doc } from "firebase/firestore";
 import { shuffleDeck, updateUserStats, finalizeSession } from "./logic/burnoutsHelpers";
 import PoseVisualizer from "./components/PoseVisualizer";
 
-// Angle calculation utility from uploaded app.js
 function calculateAngle(a, b, c) {
     if (!a || !b || !c) return -1;
     const threshold = 0.2;
@@ -24,12 +23,14 @@ function calculateDistance(a, b) {
     return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
 
+function speak(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
+}
+
 export default function BurnoutsApp() {
     const { muscleGroup } = useParams();
-    
-    // Using a static userId since authentication is handled by the Hub
     const userId = "hub_user";
-
     return <BurnoutsSession userId={userId} muscleGroup={muscleGroup} />;
 }
 
@@ -39,10 +40,11 @@ function BurnoutsSession({ userId, muscleGroup }) {
     const [totalReps, setTotalReps] = useState(0);
     const [currentReps, setCurrentReps] = useState(0);
     const [diceEarned, setDiceEarned] = useState(0);
-    const [multiplier, setMultiplier] = useState(1);
     const [sessionActive, setSessionActive] = useState(true);
     const [feedback, setFeedback] = useState("Get Ready");
+    const [movementState, setMovementState] = useState('IDLE');
     const [avatarUrl, setAvatarUrl] = useState(null);
+    const [timeElapsed, setTimeElapsed] = useState(0);
     
     const exerciseState = useRef('UP');
     const lastHighKneeLeg = useRef(null);
@@ -60,12 +62,29 @@ function BurnoutsSession({ userId, muscleGroup }) {
         fetchAvatar();
     }, [userId]);
 
+    useEffect(() => {
+        let interval;
+        if (sessionActive) {
+            interval = setInterval(() => {
+                setTimeElapsed(prev => prev + 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [sessionActive]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const secs = (seconds % 60).toString().padStart(2, '0');
+        return `${mins}:${secs}`;
+    };
+
     const processPose = (landmarks) => {
         if (!currentCard || !sessionActive) return;
 
         const exerciseId = currentCard.exercise.toLowerCase().replace(/[\s-]/g, '');
         let repIncrement = 0;
         let newFeedback = feedback;
+        let newState = movementState;
 
         switch (exerciseId) {
             case 'pushup':
@@ -80,13 +99,16 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 } else if (angle > 140) {
                     if (exerciseState.current === 'DOWN') {
                         exerciseState.current = 'UP';
+                        newState = 'UP';
                         repIncrement = 1;
                         newFeedback = 'Good rep!';
                     } else {
+                        newState = 'UP';
                         newFeedback = 'Go down';
                     }
                 } else if (angle < 110) {
                     exerciseState.current = 'DOWN';
+                    newState = 'DOWN';
                     newFeedback = 'Push up!';
                 }
                 break;
@@ -102,13 +124,16 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 } else if (angle > 145) {
                     if (exerciseState.current === 'DOWN') {
                         exerciseState.current = 'UP';
+                        newState = 'UP';
                         repIncrement = 1;
                         newFeedback = 'Good!';
                     } else {
+                        newState = 'UP';
                         newFeedback = 'Squat down';
                     }
                 } else if (angle < 110) {
                     exerciseState.current = 'DOWN';
+                    newState = 'DOWN';
                     newFeedback = 'Drive up!';
                 }
                 break;
@@ -120,10 +145,14 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 } else if (hipAngle > 165) {
                     if (!plankStartTime.current) plankStartTime.current = Date.now();
                     const seconds = Math.floor((Date.now() - plankStartTime.current) / 1000);
-                    if (seconds > currentReps) repIncrement = seconds - currentReps;
+                    if (seconds > currentReps) {
+                        repIncrement = seconds - currentReps;
+                    }
+                    newState = 'HOLD';
                     newFeedback = 'Hold it!';
                 } else {
                     plankStartTime.current = null;
+                    newState = 'FORM';
                     newFeedback = 'Lower hips';
                 }
                 break;
@@ -134,13 +163,16 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 const feetWide = calculateDistance(landmarks[27], landmarks[28]) > 0.4;
                 if (handsUp && feetWide) {
                     exerciseState.current = 'UP';
+                    newState = 'OPEN';
                     newFeedback = 'Back in';
                 } else if (!handsUp && !feetWide) {
                     if (exerciseState.current === 'UP') {
                         exerciseState.current = 'DOWN';
+                        newState = 'CLOSED';
                         repIncrement = 1;
                         newFeedback = 'Nice!';
                     } else {
+                        newState = 'CLOSED';
                         newFeedback = 'Jump!';
                     }
                 }
@@ -153,10 +185,12 @@ function BurnoutsSession({ userId, muscleGroup }) {
                     newFeedback = 'Show legs';
                 } else if (lKnee < 115 || rKnee < 115) {
                     exerciseState.current = 'DOWN';
+                    newState = 'DOWN';
                     newFeedback = 'Up';
                 } else if (lKnee > 145 && rKnee > 145) {
                     if (exerciseState.current === 'DOWN') {
                         exerciseState.current = 'UP';
+                        newState = 'UP';
                         repIncrement = 1;
                         newFeedback = 'Good!';
                     }
@@ -172,9 +206,11 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 const ref = calculateDistance(hip, knee);
                 if (dist < ref * 1.3) {
                     exerciseState.current = 'IN';
+                    newState = 'CRUNCH';
                     newFeedback = 'Down';
                 } else if (dist > ref * 1.5 && exerciseState.current === 'IN') {
                     exerciseState.current = 'OUT';
+                    newState = 'OUT';
                     repIncrement = 1;
                     newFeedback = 'Crunch!';
                 }
@@ -186,13 +222,16 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 const rUp = landmarks[26].y < landmarks[24].y - 0.08;
                 if (lUp && lastHighKneeLeg.current !== 'left') {
                     lastHighKneeLeg.current = 'left';
+                    newState = 'LEFT';
                     repIncrement = 0.5;
                     newFeedback = 'Next!';
                 } else if (rUp && lastHighKneeLeg.current !== 'right') {
                     lastHighKneeLeg.current = 'right';
+                    newState = 'RIGHT';
                     repIncrement = 0.5;
                     newFeedback = 'Next!';
                 } else {
+                    newState = 'RUN';
                     newFeedback = 'Knees high';
                 }
                 break;
@@ -204,9 +243,11 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 const isVertical = shoulder.y < landmarks[23].y && Math.abs(shoulder.x - ankle.x) < 0.25;
                 if (isHorizontal && burpeeStep.current === 0) {
                     burpeeStep.current = 1;
+                    newState = 'PLANK';
                     newFeedback = 'Up!';
                 } else if (isVertical && burpeeStep.current === 1) {
                     burpeeStep.current = 0;
+                    newState = 'STAND';
                     repIncrement = 1;
                     newFeedback = 'Down!';
                 }
@@ -217,10 +258,12 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 const rTap = calculateDistance(landmarks[16], landmarks[11]) < 0.25;
                 if ((lTap || rTap) && exerciseState.current !== 'TAP') {
                     exerciseState.current = 'TAP';
+                    newState = 'TAP';
                     repIncrement = 0.5;
                     newFeedback = 'Tap!';
                 } else if (!lTap && !rTap) {
                     exerciseState.current = 'IDLE';
+                    newState = 'IDLE';
                     newFeedback = 'Tap shoulders';
                 }
                 break;
@@ -230,9 +273,11 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 if (!baseY.current) baseY.current = ankle.y;
                 if (ankle.y < baseY.current - 0.03) {
                     exerciseState.current = 'UP';
+                    newState = 'UP';
                     newFeedback = 'Down';
                 } else if (exerciseState.current === 'UP' && ankle.y > baseY.current - 0.01) {
                     exerciseState.current = 'DOWN';
+                    newState = 'DOWN';
                     repIncrement = 1;
                     newFeedback = 'Up';
                 } else {
@@ -245,10 +290,12 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 const rShoulder = landmarks[12];
                 if (lShoulder.x > rShoulder.x + 0.05 && exerciseState.current !== 'LEFT') {
                     exerciseState.current = 'LEFT';
+                    newState = 'LEFT';
                     repIncrement = 0.5;
                     newFeedback = 'Right';
                 } else if (rShoulder.x > lShoulder.x + 0.05 && exerciseState.current !== 'RIGHT') {
                     exerciseState.current = 'RIGHT';
+                    newState = 'RIGHT';
                     repIncrement = 0.5;
                     newFeedback = 'Left';
                 } else {
@@ -262,31 +309,35 @@ function BurnoutsSession({ userId, muscleGroup }) {
 
         if (repIncrement > 0) handleRep(repIncrement);
         setFeedback(newFeedback);
+        setMovementState(newState);
     };
 
     const handleRep = (inc) => {
         const next = currentReps + inc;
-        const target = currentCard.reps * multiplier;
+        const target = currentCard.reps;
         if (next >= target) {
-            completeCard();
             setCurrentReps(target);
+            completeCard();
         } else {
             setCurrentReps(next);
         }
         const newTotalReps = totalReps + inc;
         setTotalReps(newTotalReps);
         
-        // Reward logic: 1 dice per 30 reps based on total session reps
         const newDice = Math.floor(newTotalReps / 30);
         if (newDice > diceEarned) {
             setDiceEarned(newDice);
-            // Sync immediately with Firebase
             updateUserStats(userId, newTotalReps, newDice, muscleGroup);
+        }
+
+        if (Math.floor(next) > Math.floor(currentReps)) {
+            speak(Math.floor(next).toString());
         }
     };
 
     const completeCard = () => {
         setFeedback("TARGET REACHED! 💪");
+        speak("Target reached");
         setTimeout(() => {
             if (currentCardIndex + 1 < deck.length) {
                 setCurrentCardIndex(prev => prev + 1);
@@ -297,6 +348,8 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 baseY.current = null;
                 plankStartTime.current = null;
                 setFeedback("Get Ready");
+                setMovementState('IDLE');
+                speak(deck[currentCardIndex + 1].exercise);
             } else {
                 setSessionActive(false);
                 finalizeSession(userId, totalReps, diceEarned, muscleGroup);
@@ -310,67 +363,76 @@ function BurnoutsSession({ userId, muscleGroup }) {
         window.location.href = "https://rivalishub1.netlify.app/";
     };
 
+    const getSuitSymbol = (suit) => {
+        const symbols = { 'Spades': '♠', 'Hearts': '♥', 'Clubs': '♣', 'Diamonds': '♦' };
+        return symbols[suit] || '';
+    };
+
     return (
         <div className="burnouts-container">
-            <button className="home-button" onClick={() => window.location.href = 'https://rivalishub1.netlify.app/'}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                    <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-            </button>
-            <div className="header-stats">
-                {avatarUrl && (
-                  <div className="stat-item avatar-item">
-                    <img src={avatarUrl} alt="Avatar" className="user-avatar-small" />
-                  </div>
+            <div className="ui-layer">
+                <div className="top-bar">
+                    <button className="home-button" onClick={() => window.location.href = 'https://rivalishub1.netlify.app/'}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                            <polyline points="9 22 9 12 15 12 15 22" />
+                        </svg>
+                    </button>
+                    <div className="session-stats">
+                        <div className="stat-item">
+                            <span className="stat-label">TOTAL REPS</span>
+                            <span className="stat-value">{Math.floor(totalReps)}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">DICE</span>
+                            <span className="stat-value">{diceEarned}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">TIME</span>
+                            <span className="stat-value">{formatTime(timeElapsed)}</span>
+                        </div>
+                    </div>
+                    <div className="status-badge active">📷 LIVE</div>
+                </div>
+
+                <div className="stats-container">
+                    <div className="counter-box">
+                        <span className="big-number">{Math.floor(currentReps)}</span>
+                        <span className="label">REPS</span>
+                    </div>
+                    <div className="feedback-box">
+                        <div className="state-indicator">{movementState}</div>
+                        <div className="sub-text">{feedback}</div>
+                    </div>
+                </div>
+
+                <div className="controls">
+                    <button className="primary-btn" onClick={endSession}>STOP SESSION</button>
+                </div>
+
+                {sessionActive && currentCard && (
+                    <div className="card-display">
+                        <div className="card-header">
+                            <span>{getSuitSymbol(currentCard.suit)}</span>
+                            <span>{currentCard.face}</span>
+                        </div>
+                        <div className="card-body">
+                            <h2 id="card-exercise-name">{currentCard.exercise.toUpperCase()}</h2>
+                            <div className="progress-container">
+                                <div 
+                                    className="progress-bar" 
+                                    style={ { width: `${(currentReps / currentCard.reps) * 100}%` } }
+                                ></div>
+                            </div>
+                            <span className="target-text">TARGET: {currentCard.reps}</span>
+                        </div>
+                    </div>
                 )}
-                <div className="stat-item">
-                    <span className="label">TOTAL REPS</span>
-                    <span className="value">{Math.floor(totalReps)}</span>
-                </div>
-                <div className="stat-item">
-                    <span className="label">DICE</span>
-                    <span className="value">{diceEarned}</span>
-                </div>
             </div>
 
-            <div className="workout-layout">
-                <div className="camera-panel">
-                    <PoseVisualizer onPoseResults={processPose} />
-                    <div className="feedback-overlay">{feedback}</div>
-                </div>
-
-                <div className="card-panel">
-                    {sessionActive && currentCard ? (
-                        <div className={`active-card ${currentCard.category.toLowerCase()}`}>
-                            <div className="card-meta">
-                                <span>{getSuitSymbol(currentCard.suit)}</span>
-                                <span>{currentCard.face}</span>
-                            </div>
-                            <div className="card-main">
-                                <h2>{currentCard.exercise}</h2>
-                                <div className="progress-circle">
-                                    <span className="current">{Math.floor(currentReps)}</span>
-                                    <span className="separator">/</span>
-                                    <span className="target">{currentCard.reps * multiplier}</span>
-                                </div>
-                            </div>
-                            <button className="finish-session-btn" onClick={endSession}>FINISH SESSION</button>
-                        </div>
-                    ) : (
-                        <div className="session-complete-ui">
-                            <h2>DECK COMPLETE!</h2>
-                            <button className="primary-btn" onClick={() => window.location.reload()}>REPLAY</button>
-                            <button className="secondary-btn" onClick={endSession}>FINISH</button>
-                        </div>
-                    )}
-                </div>
+            <div className="camera-panel">
+                <PoseVisualizer onPoseResults={processPose} />
             </div>
         </div>
     );
-}
-
-function getSuitSymbol(suit) {
-    const symbols = { 'Spades': '♠', 'Hearts': '♥', 'Clubs': '♣', 'Diamonds': '♦' };
-    return symbols[suit] || '';
 }
