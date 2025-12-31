@@ -5,10 +5,18 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
     const canvasRef = useRef(null);
     const [loading, setLoading] = useState(true);
 
+    const onPoseResultsRef = useRef(onPoseResults);
+    useEffect(() => {
+        onPoseResultsRef.current = onPoseResults;
+    }, [onPoseResults]);
+
     useEffect(() => {
         let pose;
         let camera;
         let isMounted = true;
+        let lastFrameTime = 0;
+        const targetFPS = 20; // Throttled for performance
+        const frameInterval = 1000 / targetFPS;
 
         const initMediaPipe = async () => {
             try {
@@ -98,23 +106,28 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
                                 });
                             }
 
-                            if (onPoseResults) {
-                                onPoseResults(results.poseLandmarks);
+                            if (onPoseResultsRef.current) {
+                                onPoseResultsRef.current(results.poseLandmarks);
                             }
                         }
                         ctx.restore();
                     });
 
-                    if (window.Camera && videoRef.current) {
-                        camera = new window.Camera(videoRef.current, {
-                            onFrame: async () => {
-                                if (pose) await pose.send({ image: videoRef.current });
-                            },
-                            width: 640,
-                            height: 480
-                        });
-                        await camera.start();
-                    }
+                if (window.Camera && videoRef.current) {
+                    camera = new window.Camera(videoRef.current, {
+                        onFrame: async () => {
+                            if (!isMounted) return;
+                            const now = Date.now();
+                            if (now - lastFrameTime < frameInterval) return;
+                            lastFrameTime = now;
+                            
+                            if (pose) await pose.send({ image: videoRef.current });
+                        },
+                        width: 640,
+                        height: 480
+                    });
+                    await camera.start();
+                }
                 }
             } catch (error) {
                 console.error("Pose tracker initialization failed:", error);
@@ -128,7 +141,7 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
             if (camera) camera.stop();
             if (pose) pose.close();
         };
-    }, [onPoseResults]);
+    }, []); // Only run on mount and unmount
 
     return (
         <div className="pose-visualizer-container" style={{ position: 'relative', width: '100%', height: '100%' }}>

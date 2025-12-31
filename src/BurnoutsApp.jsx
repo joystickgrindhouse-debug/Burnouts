@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { auth, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -79,7 +79,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
         return `${mins}:${secs}`;
     };
 
-    const processPose = (landmarks) => {
+    const processPose = useCallback((landmarks) => {
         if (!currentCard || !sessionActive) return;
 
         const exerciseId = currentCard.exercise.toLowerCase().replace(/[\s-]/g, '');
@@ -309,11 +309,11 @@ function BurnoutsSession({ userId, muscleGroup }) {
         }
 
         if (repIncrement > 0) handleRep(repIncrement);
-        setFeedback(newFeedback);
-        setMovementState(newState);
-    };
+        if (newFeedback !== feedback) setFeedback(newFeedback);
+        if (newState !== movementState) setMovementState(newState);
+    }, [currentCard, sessionActive, feedback, movementState, currentReps, handleRep]);
 
-    const handleRep = (inc) => {
+    const handleRep = useCallback((inc) => {
         const next = currentReps + inc;
         const target = currentCard.reps;
         if (next >= target) {
@@ -334,9 +334,9 @@ function BurnoutsSession({ userId, muscleGroup }) {
         if (Math.floor(next) > Math.floor(currentReps) && !isMuted) {
             speak(Math.floor(next).toString());
         }
-    };
+    }, [currentReps, currentCard, totalReps, diceEarned, isMuted, userId, muscleGroup]);
 
-    const completeCard = () => {
+    const completeCard = useCallback(() => {
         setFeedback("TARGET REACHED! 💪");
         if (!isMuted) speak("Target reached");
         setTimeout(() => {
@@ -356,7 +356,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 finalizeSession(userId, totalReps, diceEarned, muscleGroup);
             }
         }, 1500);
-    };
+    }, [currentCardIndex, deck, isMuted, userId, totalReps, diceEarned, muscleGroup]);
 
     const endSession = () => {
         finalizeSession(userId, totalReps, diceEarned, muscleGroup);
