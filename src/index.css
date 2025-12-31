@@ -77,7 +77,7 @@ body {
 }
 
 .selection-container h1 {
-  display: none; /* Hide old title */
+  display: block;
 }
 
 .buttons-grid {
