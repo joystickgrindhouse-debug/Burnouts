@@ -11,7 +11,7 @@ export default function BurnoutsSelection() {
     { name: "Arms", icon: "/assets/icons/arms.png" },
     { name: "Legs", icon: "/assets/icons/legs.png" },
     { name: "Core", icon: "/assets/icons/core.png" },
-    { name: "Cardio", icon: "/assets/icons/cardio.png" },
+    { name: "Full Body", icon: "/assets/icons/cardio.png" },
   ];
 
   return (

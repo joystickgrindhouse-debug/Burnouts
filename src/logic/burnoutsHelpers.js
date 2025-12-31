@@ -6,7 +6,7 @@ export function shuffleDeck(muscleGroup) {
     Arms: ["Push-ups", "Plank Up-Downs", "Pike Push ups", "Shoulder Taps"],
     Legs: ["Squats", "Lunges", "Glute Bridges", "Calf Raises"],
     Core: ["Crunches", "Plank", "Russian Twists", "Leg Raises"],
-    Cardio: ["Jumping Jacks", "High Knees", "Burpees", "Mountain Climbers"],
+    "Full Body": ["Jumping Jacks", "High Knees", "Burpees", "Mountain Climbers"],
   };
 
   const suits = ["Spades", "Hearts", "Diamonds", "Clubs"];
