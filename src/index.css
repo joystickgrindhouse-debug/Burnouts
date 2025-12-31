@@ -18,7 +18,7 @@ body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   background: #000;
-  background-image: url('/assets/generated_images/red-and-black-gym-background.png');
+  background-image: url('/assets/generated_images/urban-boxing-gym-background.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -41,7 +41,7 @@ body {
   letter-spacing: 6px;
   font-weight: 900;
   margin-bottom: 0.5rem;
-  text-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+  text-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
 }
 
 .burnouts-subtitle {
@@ -50,7 +50,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 4px;
   font-weight: 700;
-  text-shadow: 0 0 15px rgba(255, 68, 68, 0.4);
+  text-shadow: 0 0 20px rgba(255, 68, 68, 0.6);
 }
 
 @keyframes fadeInDown {
@@ -73,7 +73,7 @@ body {
   padding: 2rem;
   position: relative;
   z-index: 1;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .selection-container h1 {
@@ -377,4 +377,12 @@ body {
 .home-button svg {
   width: 24px;
   height: 24px;
+}
+
+.user-avatar-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #ff4444;
+  object-fit: cover;
 }
