@@ -73,11 +73,55 @@ function BurnoutsSession({ userId, muscleGroup }) {
         return () => clearInterval(interval);
     }, [sessionActive]);
 
-    const formatTime = (seconds) => {
-        const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-        const secs = (seconds % 60).toString().padStart(2, '0');
-        return `${mins}:${secs}`;
+    const getSuitSymbol = (suit) => {
+        const symbols = { 'Spades': '♠', 'Hearts': '♥', 'Clubs': '♣', 'Diamonds': '♦' };
+        return symbols[suit] || '';
     };
+
+    const completeCard = useCallback(() => {
+        setFeedback("TARGET REACHED! 💪");
+        if (!isMuted) speak("Target reached");
+        setTimeout(() => {
+            if (currentCardIndex + 1 < deck.length) {
+                setCurrentCardIndex(prev => prev + 1);
+                setCurrentReps(0);
+                exerciseState.current = 'UP';
+                lastHighKneeLeg.current = null;
+                burpeeStep.current = 0;
+                baseY.current = null;
+                plankStartTime.current = null;
+                setFeedback("Get Ready");
+                setMovementState('IDLE');
+                if (!isMuted) speak(deck[currentCardIndex + 1].exercise);
+            } else {
+                setSessionActive(false);
+                finalizeSession(userId, totalReps, diceEarned, muscleGroup);
+            }
+        }, 1500);
+    }, [currentCardIndex, deck, isMuted, userId, totalReps, diceEarned, muscleGroup]);
+
+    const handleRep = useCallback((inc) => {
+        const next = currentReps + inc;
+        const target = currentCard.reps;
+        if (next >= target) {
+            setCurrentReps(target);
+            completeCard();
+        } else {
+            setCurrentReps(next);
+        }
+        const newTotalReps = totalReps + inc;
+        setTotalReps(newTotalReps);
+        
+        const newDice = Math.floor(newTotalReps / 30);
+        if (newDice > diceEarned) {
+            setDiceEarned(newDice);
+            updateUserStats(userId, newTotalReps, newDice, muscleGroup);
+        }
+
+        if (Math.floor(next) > Math.floor(currentReps) && !isMuted) {
+            speak(Math.floor(next).toString());
+        }
+    }, [currentReps, currentCard, totalReps, diceEarned, isMuted, userId, muscleGroup, completeCard]);
 
     const processPose = useCallback((landmarks) => {
         if (!currentCard || !sessionActive) return;
@@ -312,62 +356,6 @@ function BurnoutsSession({ userId, muscleGroup }) {
         if (newFeedback !== feedback) setFeedback(newFeedback);
         if (newState !== movementState) setMovementState(newState);
     }, [currentCard, sessionActive, feedback, movementState, currentReps, handleRep]);
-
-    const handleRep = useCallback((inc) => {
-        const next = currentReps + inc;
-        const target = currentCard.reps;
-        if (next >= target) {
-            setCurrentReps(target);
-            completeCard();
-        } else {
-            setCurrentReps(next);
-        }
-        const newTotalReps = totalReps + inc;
-        setTotalReps(newTotalReps);
-        
-        const newDice = Math.floor(newTotalReps / 30);
-        if (newDice > diceEarned) {
-            setDiceEarned(newDice);
-            updateUserStats(userId, newTotalReps, newDice, muscleGroup);
-        }
-
-        if (Math.floor(next) > Math.floor(currentReps) && !isMuted) {
-            speak(Math.floor(next).toString());
-        }
-    }, [currentReps, currentCard, totalReps, diceEarned, isMuted, userId, muscleGroup]);
-
-    const completeCard = useCallback(() => {
-        setFeedback("TARGET REACHED! 💪");
-        if (!isMuted) speak("Target reached");
-        setTimeout(() => {
-            if (currentCardIndex + 1 < deck.length) {
-                setCurrentCardIndex(prev => prev + 1);
-                setCurrentReps(0);
-                exerciseState.current = 'UP';
-                lastHighKneeLeg.current = null;
-                burpeeStep.current = 0;
-                baseY.current = null;
-                plankStartTime.current = null;
-                setFeedback("Get Ready");
-                setMovementState('IDLE');
-                if (!isMuted) speak(deck[currentCardIndex + 1].exercise);
-            } else {
-                setSessionActive(false);
-                finalizeSession(userId, totalReps, diceEarned, muscleGroup);
-            }
-        }, 1500);
-    }, [currentCardIndex, deck, isMuted, userId, totalReps, diceEarned, muscleGroup]);
-
-    const endSession = () => {
-        finalizeSession(userId, totalReps, diceEarned, muscleGroup);
-        alert(`Session Complete!\nTotal Reps: ${Math.floor(totalReps)}\nDice Earned: ${diceEarned}`);
-        window.location.href = "https://rivalishub1.netlify.app/";
-    };
-
-    const getSuitSymbol = (suit) => {
-        const symbols = { 'Spades': '♠', 'Hearts': '♥', 'Clubs': '♣', 'Diamonds': '♦' };
-        return symbols[suit] || '';
-    };
 
     return (
         <div className="burnouts-container">
