@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
-import { shuffleDeck } from "./logic/burnoutsHelpers";
+import { useParams, useSearchParams } from "react-router-dom";
+import { auth, db } from "./firebase";
+import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
+import { getDoc, doc } from "firebase/firestore";
+import { shuffleDeck, updateUserStats, finalizeSession } from "./logic/burnoutsHelpers";
 import PoseVisualizer from "./components/PoseVisualizer";
 
 // Angle calculation utility from uploaded app.js
 function calculateAngle(a, b, c) {
     if (!a || !b || !c) return -1;
-    // Using visibility threshold from uploaded CONFIG
     const threshold = 0.2;
     if (a.visibility < threshold || b.visibility < threshold || c.visibility < threshold) {
         return -1; 
@@ -17,7 +19,6 @@ function calculateAngle(a, b, c) {
     return angle;
 }
 
-// Distance utility from uploaded app.js
 function calculateDistance(a, b) {
     if (!a || !b) return 0;
     return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
@@ -25,6 +26,33 @@ function calculateDistance(a, b) {
 
 export default function BurnoutsApp() {
     const { muscleGroup } = useParams();
+    const [searchParams] = useSearchParams();
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [authError, setAuthError] = useState(null);
+
+    useEffect(() => {
+        const token = searchParams.get('token');
+        if (token) {
+            signInWithCustomToken(auth, token).catch((error) => {
+                console.error('Error signing in with token:', error);
+                setAuthError(error.message);
+            });
+        }
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, [searchParams]);
+
+    if (loading) return <div className="loading">LOADING...</div>;
+    if (!user) return <div className="loading">AUTHENTICATING...</div>;
+
+    return <BurnoutsSession userId={user.uid} muscleGroup={muscleGroup} />;
+}
+
+function BurnoutsSession({ userId, muscleGroup }) {
     const [deck, setDeck] = useState(shuffleDeck(muscleGroup));
     const [currentCardIndex, setCurrentCardIndex] = useState(0);
     const [totalReps, setTotalReps] = useState(0);
@@ -33,8 +61,8 @@ export default function BurnoutsApp() {
     const [multiplier, setMultiplier] = useState(1);
     const [sessionActive, setSessionActive] = useState(true);
     const [feedback, setFeedback] = useState("Get Ready");
+    const [avatarUrl, setAvatarUrl] = useState(null);
     
-    // Exercise State Machine Refs (Matching logic from uploaded app.js classes)
     const exerciseState = useRef('UP');
     const lastHighKneeLeg = useRef(null);
     const burpeeStep = useRef(0);
@@ -43,15 +71,21 @@ export default function BurnoutsApp() {
 
     const currentCard = deck[currentCardIndex];
 
+    useEffect(() => {
+        const fetchAvatar = async () => {
+            const docSnap = await getDoc(doc(db, "users", userId));
+            if (docSnap.exists()) setAvatarUrl(docSnap.data().avatarUrl);
+        };
+        fetchAvatar();
+    }, [userId]);
+
     const processPose = (landmarks) => {
         if (!currentCard || !sessionActive) return;
 
-        // Normalize exercise name for matching
         const exerciseId = currentCard.exercise.toLowerCase().replace(/[\s-]/g, '');
         let repIncrement = 0;
         let newFeedback = feedback;
 
-        // IMPLEMENTING FULL LOGIC FROM UPLOADED app.js
         switch (exerciseId) {
             case 'pushup':
             case 'plankupdown':
@@ -76,7 +110,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'squats':
             case 'glutebridges': {
                 const leftAngle = calculateAngle(landmarks[23], landmarks[25], landmarks[27]);
@@ -99,7 +132,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'plank': {
                 const hipAngle = calculateAngle(landmarks[11], landmarks[23], landmarks[27]);
                 if (hipAngle === -1) {
@@ -107,10 +139,7 @@ export default function BurnoutsApp() {
                 } else if (hipAngle > 165) {
                     if (!plankStartTime.current) plankStartTime.current = Date.now();
                     const seconds = Math.floor((Date.now() - plankStartTime.current) / 1000);
-                    // Special case for static hold
-                    if (seconds > currentReps) {
-                        repIncrement = seconds - currentReps;
-                    }
+                    if (seconds > currentReps) repIncrement = seconds - currentReps;
                     newFeedback = 'Hold it!';
                 } else {
                     plankStartTime.current = null;
@@ -118,7 +147,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'jumpingjacks': {
                 const nose = landmarks[0];
                 const handsUp = landmarks[15].y < nose.y && landmarks[16].y < nose.y;
@@ -137,7 +165,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'lunges': {
                 const lKnee = calculateAngle(landmarks[23], landmarks[25], landmarks[27]);
                 const rKnee = calculateAngle(landmarks[24], landmarks[26], landmarks[28]);
@@ -155,7 +182,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'crunches':
             case 'legraises': {
                 const shoulder = landmarks[11];
@@ -173,7 +199,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'highknees':
             case 'mountainclimbers': {
                 const lUp = landmarks[25].y < landmarks[23].y - 0.08;
@@ -191,7 +216,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'burpees': {
                 const shoulder = landmarks[11];
                 const ankle = landmarks[27];
@@ -207,7 +231,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'shouldertaps': {
                 const lTap = calculateDistance(landmarks[15], landmarks[12]) < 0.25;
                 const rTap = calculateDistance(landmarks[16], landmarks[11]) < 0.25;
@@ -221,7 +244,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'calfraises': {
                 const ankle = landmarks[27];
                 if (!baseY.current) baseY.current = ankle.y;
@@ -237,7 +259,6 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             case 'russiantwists': {
                 const lShoulder = landmarks[11];
                 const rShoulder = landmarks[12];
@@ -254,32 +275,28 @@ export default function BurnoutsApp() {
                 }
                 break;
             }
-
             default:
                 break;
         }
 
-        if (repIncrement > 0) {
-            handleRep(repIncrement);
-        }
+        if (repIncrement > 0) handleRep(repIncrement);
         setFeedback(newFeedback);
     };
 
     const handleRep = (inc) => {
-        setCurrentReps(prev => {
-            const next = prev + inc;
-            const target = currentCard.reps * multiplier;
-            if (next >= target) {
-                completeCard();
-                return target;
-            }
-            return next;
-        });
-        setTotalReps(prev => prev + inc);
-        
-        if (Math.floor((totalReps + inc) / 30) > Math.floor(totalReps / 30)) {
-            setDiceEarned(prev => prev + 1);
+        const next = currentReps + inc;
+        const target = currentCard.reps * multiplier;
+        if (next >= target) {
+            completeCard();
+            setCurrentReps(target);
+        } else {
+            setCurrentReps(next);
         }
+        const newTotalReps = totalReps + inc;
+        setTotalReps(newTotalReps);
+        const newDice = Math.floor(newTotalReps / 30);
+        setDiceEarned(newDice);
+        updateUserStats(userId, newTotalReps, newDice, muscleGroup);
     };
 
     const completeCard = () => {
@@ -288,7 +305,6 @@ export default function BurnoutsApp() {
             if (currentCardIndex + 1 < deck.length) {
                 setCurrentCardIndex(prev => prev + 1);
                 setCurrentReps(0);
-                // Reset exercise specific states
                 exerciseState.current = 'UP';
                 lastHighKneeLeg.current = null;
                 burpeeStep.current = 0;
@@ -297,24 +313,31 @@ export default function BurnoutsApp() {
                 setFeedback("Get Ready");
             } else {
                 setSessionActive(false);
+                finalizeSession(userId, totalReps, diceEarned, muscleGroup);
             }
         }, 1500);
     };
 
     const endSession = () => {
+        finalizeSession(userId, totalReps, diceEarned, muscleGroup);
         alert(`Session Complete!\nTotal Reps: ${Math.floor(totalReps)}\nDice Earned: ${diceEarned}`);
-        window.location.href = "/burnouts";
+        window.location.href = "https://rivalishub1.netlify.app/";
     };
 
     return (
         <div className="burnouts-container">
-            <button className="home-button" onClick={() => window.location.href = '/'}>
+            <button className="home-button" onClick={() => window.location.href = 'https://rivalishub1.netlify.app/'}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                     <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
             </button>
             <div className="header-stats">
+                {avatarUrl && (
+                  <div className="stat-item avatar-item">
+                    <img src={avatarUrl} alt="Avatar" className="user-avatar-small" />
+                  </div>
+                )}
                 <div className="stat-item">
                     <span className="label">TOTAL REPS</span>
                     <span className="value">{Math.floor(totalReps)}</span>
