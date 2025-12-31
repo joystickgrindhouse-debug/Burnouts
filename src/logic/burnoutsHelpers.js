@@ -10,35 +10,30 @@ export function shuffleDeck(muscleGroup) {
   const faceValues = [2, 3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K", "A"];
   let deck = [];
 
-  suits.forEach((suit) => {
+  // Determine the list of exercises for the current muscle group
+  const exerciseList = exercisesMap[muscleGroup] || exercisesMap["Arms"];
+
+  suits.forEach((suit, suitIndex) => {
+    // Each suit represents one specific exercise from the muscle group's list
+    const exercise = exerciseList[suitIndex % exerciseList.length];
+
     faceValues.forEach((face) => {
       const reps = typeof face === "number" ? face : 
                    face === "J" ? 11 : 
                    face === "Q" ? 12 : 
                    face === "K" ? 13 : 14;
       
-      // Map suit to muscle group for consistency with provided exercise list
-      const suitToGroup = {
-        "Spades": "Legs",
-        "Hearts": "Arms",
-        "Clubs": "Core",
-        "Diamonds": "Cardio"
-      };
-      
-      const currentGroup = suitToGroup[suit];
-      const exerciseList = exercisesMap[currentGroup];
-      const exercise = exerciseList[Math.floor(Math.random() * exerciseList.length)];
-      
-      deck.push({ suit, face, reps, exercise, category: currentGroup });
+      deck.push({ 
+        suit, 
+        face, 
+        reps, 
+        exercise, 
+        category: muscleGroup 
+      });
     });
   });
 
-  // Filter deck based on selected muscle group if provided
-  if (muscleGroup && exercisesMap[muscleGroup]) {
-    deck = deck.filter(card => card.category === muscleGroup);
-  }
-
-  // Shuffle the filtered deck
+  // Shuffle the deck
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
