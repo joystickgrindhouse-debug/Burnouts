@@ -294,9 +294,14 @@ function BurnoutsSession({ userId, muscleGroup }) {
         }
         const newTotalReps = totalReps + inc;
         setTotalReps(newTotalReps);
+        
+        // Reward logic: 1 dice per 30 reps based on total session reps
         const newDice = Math.floor(newTotalReps / 30);
-        setDiceEarned(newDice);
-        updateUserStats(userId, newTotalReps, newDice, muscleGroup);
+        if (newDice > diceEarned) {
+            setDiceEarned(newDice);
+            // Sync immediately with Firebase
+            updateUserStats(userId, newTotalReps, newDice, muscleGroup);
+        }
     };
 
     const completeCard = () => {
