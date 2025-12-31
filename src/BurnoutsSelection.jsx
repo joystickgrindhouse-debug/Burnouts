@@ -16,6 +16,10 @@ export default function BurnoutsSelection() {
 
   return (
     <div className="selection-container">
+      <div className="hero-text">
+        <h1 className="rivalis-title">Rivalis Fitness Reimagined</h1>
+        <h2 className="burnouts-subtitle">Burnouts: Can You Outlast?</h2>
+      </div>
       <button className="home-button" onClick={() => window.location.href = 'https://rivalishub1.netlify.app/'}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
