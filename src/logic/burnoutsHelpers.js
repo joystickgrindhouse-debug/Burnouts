@@ -1,6 +1,3 @@
-import { db } from "../firebase";
-import { doc, updateDoc, arrayUnion, getDoc, setDoc } from "firebase/firestore";
-
 export function shuffleDeck(muscleGroup) {
   const exercisesMap = {
     Arms: ["Push-Ups", "Plank Up-Downs", "Tricep Dips", "Shoulder Taps"],
@@ -33,32 +30,10 @@ export function shuffleDeck(muscleGroup) {
   return deck;
 }
 
-export async function updateUserStats(userId, totalReps, diceEarned, muscleGroup) {
-  const userRef = doc(db, "users", userId);
-  const userSnap = await getDoc(userRef);
-
-  if (userSnap.exists()) {
-    await updateDoc(userRef, {
-      totalReps,
-      diceBalance: diceEarned,
-      [`leaderboard.${muscleGroup}`]: arrayUnion(totalReps),
-    });
-  } else {
-    await setDoc(userRef, {
-      totalReps,
-      diceBalance: diceEarned,
-      leaderboard: { [muscleGroup]: [totalReps] },
-    });
-  }
+export function updateUserStats(userId, totalReps, diceEarned, muscleGroup) {
+  console.log("Stats updated (local only for now):", { userId, totalReps, diceEarned, muscleGroup });
 }
 
-export async function finalizeSession(userId, totalReps, diceEarned, muscleGroup) {
-  const userRef = doc(db, "users", userId);
-  const userSnap = await getDoc(userRef);
-
-  if (userSnap.exists()) {
-    await updateDoc(userRef, {
-      [`leaderboard.${muscleGroup}`]: arrayUnion(totalReps),
-    });
-  }
+export function finalizeSession(userId, totalReps, diceEarned, muscleGroup) {
+  console.log("Session finalized (local only for now):", { userId, totalReps, diceEarned, muscleGroup });
 }
