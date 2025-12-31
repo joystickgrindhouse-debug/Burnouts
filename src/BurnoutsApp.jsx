@@ -23,25 +23,41 @@ function BurnoutsSession({ muscleGroup }) {
   const [multiplier, setMultiplier] = useState(1);
   const [sessionActive, setSessionActive] = useState(true);
 
+  // Initialize first card
+  useEffect(() => {
+    if (deck.length === 0) {
+       setDeck(shuffleDeck(muscleGroup));
+    }
+  }, [muscleGroup, deck.length]);
+
   const completeCard = (reps) => {
     const adjustedReps = reps * multiplier;
-    setTotalReps(prev => prev + adjustedReps);
+    const newTotalReps = totalReps + adjustedReps;
+    setTotalReps(newTotalReps);
 
-    if ((totalReps + adjustedReps) % (30 * multiplier) === 0) {
-      setDiceEarned(prev => prev + 1 * multiplier);
-    }
+    // Reward logic: 1 dice per 30 reps (scaled by multiplier if applicable, 
+    // but the prompt says 1 dice per 30 reps)
+    const newDiceEarned = Math.floor(newTotalReps / 30);
+    setDiceEarned(newDiceEarned);
 
-    setTimeout(() => setCurrentCardIndex(prev => prev + 1), 500);
+    // Visual feedback delay before next card
+    setTimeout(() => {
+      if (currentCardIndex + 1 < deck.length) {
+        setCurrentCardIndex(prev => prev + 1);
+      } else {
+        // Deck complete handled in render
+      }
+    }, 1500);
   };
 
   const endSession = () => {
     setSessionActive(false);
-    alert(`Session Complete!\nReps: ${totalReps}\nCards: ${currentCardIndex + 1}\nDice: ${diceEarned}`);
-    setTimeout(() => window.location.href = "/", 3000);
+    alert(`Session Complete!\nTotal Reps: ${totalReps}\nDice Earned: ${diceEarned}`);
+    window.location.href = "/burnouts";
   };
 
   const replayDeck = () => {
-    setMultiplier(2);
+    setMultiplier(prev => prev * 2);
     setCurrentCardIndex(0);
     setDeck(shuffleDeck(muscleGroup));
     setSessionActive(true);
@@ -51,27 +67,62 @@ function BurnoutsSession({ muscleGroup }) {
 
   return (
     <div className="burnouts-container">
+      <div className="header-stats">
+        <div className="stat-item">
+          <span className="label">REPS:</span>
+          <span className="value">{totalReps}</span>
+        </div>
+        <div className="stat-item">
+          <span className="label">DICE:</span>
+          <span className="value">{diceEarned}</span>
+        </div>
+      </div>
+
       <div className="deck-view">
-        {currentCardIndex < deck.length && currentCard ? (
-          <div className="card">
-            <h2>{currentCard.exercise}</h2>
-            <p>Reps: {currentCard.reps * multiplier}</p>
-            <button onClick={() => completeCard(currentCard.reps)}>Complete Card</button>
+        {sessionActive && currentCardIndex < deck.length && currentCard ? (
+          <div className="card-container">
+            <div className={`card-face ${currentCard.category.toLowerCase()}`}>
+              <div className="card-header">
+                 <span className="suit">{getSuitSymbol(currentCard.suit)}</span>
+                 <span className="face-value">{currentCard.face}</span>
+              </div>
+              <div className="card-body">
+                <h2 className="exercise-name">{currentCard.exercise}</h2>
+                <div className="rep-target">
+                  <span className="target-label">GOAL</span>
+                  <span className="target-value">{currentCard.reps * multiplier}</span>
+                </div>
+              </div>
+              <button className="complete-btn" onClick={() => completeCard(currentCard.reps)}>
+                COMPLETE CARD
+              </button>
+            </div>
           </div>
         ) : (
           <div className="session-end">
-            <h2>Deck Complete!</h2>
-            <button onClick={replayDeck}>Replay x2 Rewards</button>
-            <button onClick={endSession}>End Session</button>
+            <h2 className="glow-text">DECK COMPLETE! 💪</h2>
+            <div className="action-buttons">
+              <button className="replay-btn" onClick={replayDeck}>REPLAY (x{multiplier * 2} REWARDS)</button>
+              <button className="end-btn" onClick={endSession}>END SESSION</button>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="stats-panel">
-        <p>Cards Completed: {currentCardIndex}</p>
-        <p>Total Reps: {totalReps}</p>
-        <p>Dice Earned: {diceEarned}</p>
+      <div className="footer-info">
+         <p>Exercise {currentCardIndex + 1} of {deck.length}</p>
+         <p>Muscle Group: {muscleGroup}</p>
       </div>
     </div>
   );
+}
+
+function getSuitSymbol(suit) {
+  switch(suit) {
+    case 'Spades': return '♠';
+    case 'Hearts': return '♥';
+    case 'Clubs': return '♣';
+    case 'Diamonds': return '♦';
+    default: return '';
+  }
 }

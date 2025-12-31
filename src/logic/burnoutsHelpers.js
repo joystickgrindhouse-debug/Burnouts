@@ -1,8 +1,8 @@
 export function shuffleDeck(muscleGroup) {
   const exercisesMap = {
-    Arms: ["Push-Ups", "Plank Up-Downs", "Tricep Dips", "Shoulder Taps"],
+    Arms: ["Push-ups", "Plank Up-Downs", "Pike Push ups", "Shoulder Taps"],
     Legs: ["Squats", "Lunges", "Glute Bridges", "Calf Raises"],
-    Core: ["Crunches", "Plank Hold", "Russian Twists", "Leg Raises"],
+    Core: ["Crunches", "Plank", "Russian Twists", "Leg Raises"],
     Cardio: ["Jumping Jacks", "High Knees", "Burpees", "Mountain Climbers"],
   };
 
@@ -16,12 +16,29 @@ export function shuffleDeck(muscleGroup) {
                    face === "J" ? 11 : 
                    face === "Q" ? 12 : 
                    face === "K" ? 13 : 14;
-      const exerciseList = exercisesMap[muscleGroup] || exercisesMap["Arms"];
+      
+      // Map suit to muscle group for consistency with provided exercise list
+      const suitToGroup = {
+        "Spades": "Legs",
+        "Hearts": "Arms",
+        "Clubs": "Core",
+        "Diamonds": "Cardio"
+      };
+      
+      const currentGroup = suitToGroup[suit];
+      const exerciseList = exercisesMap[currentGroup];
       const exercise = exerciseList[Math.floor(Math.random() * exerciseList.length)];
-      deck.push({ suit, face, reps, exercise });
+      
+      deck.push({ suit, face, reps, exercise, category: currentGroup });
     });
   });
 
+  // Filter deck based on selected muscle group if provided
+  if (muscleGroup && exercisesMap[muscleGroup]) {
+    deck = deck.filter(card => card.category === muscleGroup);
+  }
+
+  // Shuffle the filtered deck
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
