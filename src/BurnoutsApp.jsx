@@ -45,6 +45,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
     const [movementState, setMovementState] = useState('IDLE');
     const [avatarUrl, setAvatarUrl] = useState(null);
     const [timeElapsed, setTimeElapsed] = useState(0);
+    const [isMuted, setIsMuted] = useState(false);
     
     const exerciseState = useRef('UP');
     const lastHighKneeLeg = useRef(null);
@@ -330,14 +331,14 @@ function BurnoutsSession({ userId, muscleGroup }) {
             updateUserStats(userId, newTotalReps, newDice, muscleGroup);
         }
 
-        if (Math.floor(next) > Math.floor(currentReps)) {
+        if (Math.floor(next) > Math.floor(currentReps) && !isMuted) {
             speak(Math.floor(next).toString());
         }
     };
 
     const completeCard = () => {
         setFeedback("TARGET REACHED! 💪");
-        speak("Target reached");
+        if (!isMuted) speak("Target reached");
         setTimeout(() => {
             if (currentCardIndex + 1 < deck.length) {
                 setCurrentCardIndex(prev => prev + 1);
@@ -349,7 +350,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 plankStartTime.current = null;
                 setFeedback("Get Ready");
                 setMovementState('IDLE');
-                speak(deck[currentCardIndex + 1].exercise);
+                if (!isMuted) speak(deck[currentCardIndex + 1].exercise);
             } else {
                 setSessionActive(false);
                 finalizeSession(userId, totalReps, diceEarned, muscleGroup);
@@ -379,6 +380,21 @@ function BurnoutsSession({ userId, muscleGroup }) {
                         </svg>
                     </button>
                     <div className="session-stats">
+                        <button 
+                            className="mute-toggle" 
+                            onClick={() => setIsMuted(!isMuted)}
+                            style={ { background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0 10px' } }
+                        >
+                            {isMuted ? (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                    <path d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6" />
+                                </svg>
+                            ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                    <path d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                                </svg>
+                            )}
+                        </button>
                         <div className="stat-item">
                             <span className="stat-label">TOTAL REPS</span>
                             <span className="stat-value">{Math.floor(totalReps)}</span>
