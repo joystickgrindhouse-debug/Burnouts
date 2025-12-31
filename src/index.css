@@ -259,6 +259,25 @@ body > * {
   gap: 10px;
 }
 
+.finish-session-btn {
+  background: transparent;
+  border: 1px solid #ff4444;
+  color: #ff4444;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+.finish-session-btn:hover {
+  background: rgba(255, 68, 68, 0.1);
+  box-shadow: 0 0 15px rgba(255, 68, 68, 0.3);
+}
+
 .progress-circle .separator {
   color: #444;
   font-size: 2rem;

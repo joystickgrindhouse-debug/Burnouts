@@ -340,6 +340,7 @@ export default function BurnoutsApp() {
                                     <span className="target">{currentCard.reps * multiplier}</span>
                                 </div>
                             </div>
+                            <button className="finish-session-btn" onClick={endSession}>FINISH SESSION</button>
                         </div>
                     ) : (
                         <div className="session-complete-ui">
