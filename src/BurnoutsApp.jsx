@@ -36,20 +36,18 @@ export default function BurnoutsApp() {
         if (token) {
             signInWithCustomToken(auth, token).catch((error) => {
                 console.error('Error signing in with token:', error);
-                setAuthError(error.message);
             });
         }
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
+            setUser(currentUser || { uid: 'guest', isAnonymous: true });
             setLoading(false);
         });
         return () => unsubscribe();
     }, [searchParams]);
 
     if (loading) return <div className="loading">LOADING...</div>;
-    if (!user) return <div className="loading">AUTHENTICATING...</div>;
 
-    return <BurnoutsSession userId={user.uid} muscleGroup={muscleGroup} />;
+    return <BurnoutsSession userId={user?.uid || 'guest'} muscleGroup={muscleGroup} />;
 }
 
 function BurnoutsSession({ userId, muscleGroup }) {
