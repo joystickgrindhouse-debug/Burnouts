@@ -127,7 +127,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
         if (Math.floor(next) > Math.floor(currentReps) && !isMuted) {
             speak(Math.floor(next).toString());
         }
-    }, [currentReps, currentCard, totalReps, diceEarned, isMuted, userId, muscleGroup, completeCard]);
+    }, [currentReps, currentCard, totalReps, ticketsEarned, isMuted, userId, muscleGroup, completeCard]);
 
     const processPose = useCallback((landmarks) => {
         if (!currentCard || !sessionActive) return;
@@ -411,7 +411,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 </div>
 
                 <div className="controls">
-                    <button className="primary-btn" onClick={endSession}>STOP SESSION</button>
+                    <button className="primary-btn" onClick={() => navigate('/burnouts')}>STOP SESSION</button>
                 </div>
 
                 {sessionActive && currentCard && (
