@@ -89,7 +89,11 @@ function BurnoutsSession({ userId, muscleGroup }) {
                         clearInterval(timer);
                         return 0;
                     }
-                    return prev - 1;
+                    const next = prev - 1;
+                    if (next <= 5 && !isMuted) {
+                        speak(next.toString());
+                    }
+                    return next;
                 });
             }, 1000);
         }
