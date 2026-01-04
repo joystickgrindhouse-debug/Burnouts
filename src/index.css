@@ -345,3 +345,8 @@ body {
   box-shadow: 0 0 15px var(--accent-glow);
   margin-bottom: 20px;
 }
+
+.home-button svg {
+  width: 24px;
+  height: 24px;
+}
