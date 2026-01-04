@@ -190,6 +190,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
                         repIncrement = 1;
                         newFeedback = 'Good rep!';
                     } else {
+                        exerciseState.current = 'UP';
                         newState = 'UP';
                         newFeedback = 'Go down';
                     }
@@ -215,6 +216,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
                         repIncrement = 1;
                         newFeedback = 'Good!';
                     } else {
+                        exerciseState.current = 'UP';
                         newState = 'UP';
                         newFeedback = 'Squat down';
                     }
@@ -235,10 +237,12 @@ function BurnoutsSession({ userId, muscleGroup }) {
                     if (seconds > currentReps) {
                         repIncrement = seconds - currentReps;
                     }
+                    exerciseState.current = 'HOLD';
                     newState = 'HOLD';
                     newFeedback = 'Hold it!';
                 } else {
                     plankStartTime.current = null;
+                    exerciseState.current = 'FORM';
                     newState = 'FORM';
                     newFeedback = 'Lower hips';
                 }
@@ -264,6 +268,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
                         repIncrement = 1;
                         newFeedback = 'Nice!';
                     } else {
+                        exerciseState.current = 'DOWN';
                         newState = 'CLOSED';
                         newFeedback = 'Jump!';
                     }
@@ -285,6 +290,10 @@ function BurnoutsSession({ userId, muscleGroup }) {
                         newState = 'UP';
                         repIncrement = 1;
                         newFeedback = 'Good!';
+                    } else {
+                        exerciseState.current = 'UP';
+                        newState = 'UP';
+                        newFeedback = 'Lunge down';
                     }
                 }
                 break;
