@@ -68,10 +68,7 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
                         ctx.save();
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         
-                        // Mirroring as per uploaded code
-                        ctx.translate(canvas.width, 0);
-                        ctx.scale(-1, 1);
-                        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
                         if (results.poseLandmarks) {
                             // Skeleton connectors from uploaded code
