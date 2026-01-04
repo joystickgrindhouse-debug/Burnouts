@@ -166,17 +166,17 @@ function BurnoutsSession({ userId, muscleGroup }) {
     }, [currentReps, currentCard, totalReps, ticketsEarned, isMuted, userId, muscleGroup, completeCard]);
 
     const processPose = useCallback((landmarks) => {
-        if (!currentCard || !sessionActive || cooldown > 0) return;
+        if (!currentCard || !sessionActive || cooldown > 0 || !landmarks) return;
 
-        const exerciseId = currentCard.exercise.toLowerCase().replace(/[\s-]/g, '');
+        const exerciseId = currentCard.exercise.toLowerCase().replace(/[\s-]/g, '').replace(/-/g, '');
         let repIncrement = 0;
         let newFeedback = feedback;
         let newState = movementState;
 
         switch (exerciseId) {
-            case 'pushup':
-            case 'plankupdown':
-            case 'pikepushup': {
+            case 'pushups':
+            case 'plankupdowns':
+            case 'pikepushups': {
                 const leftAngle = calculateAngle(landmarks[11], landmarks[13], landmarks[15]);
                 const rightAngle = calculateAngle(landmarks[12], landmarks[14], landmarks[16]);
                 const angle = leftAngle !== -1 && rightAngle !== -1 ? Math.max(leftAngle, rightAngle) : (leftAngle !== -1 ? leftAngle : rightAngle);
@@ -246,8 +246,13 @@ function BurnoutsSession({ userId, muscleGroup }) {
             }
             case 'jumpingjacks': {
                 const nose = landmarks[0];
-                const handsUp = landmarks[15].y < nose.y && landmarks[16].y < nose.y;
-                const feetWide = calculateDistance(landmarks[27], landmarks[28]) > 0.4;
+                const leftWrist = landmarks[15];
+                const rightWrist = landmarks[16];
+                const leftAnkle = landmarks[27];
+                const rightAnkle = landmarks[28];
+                
+                const handsUp = leftWrist.y < nose.y && rightWrist.y < nose.y;
+                const feetWide = calculateDistance(leftAnkle, rightAnkle) > 0.4;
                 if (handsUp && feetWide) {
                     exerciseState.current = 'UP';
                     newState = 'OPEN';
