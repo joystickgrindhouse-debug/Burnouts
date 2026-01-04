@@ -46,7 +46,8 @@ function BurnoutsSession({ userId, muscleGroup }) {
     const [avatarUrl, setAvatarUrl] = useState(null);
     const [timeElapsed, setTimeElapsed] = useState(0);
     const [isMuted, setIsMuted] = useState(false);
-    
+    const [cooldown, setCooldown] = useState(0);
+
     const exerciseState = useRef('UP');
     const lastHighKneeLeg = useRef(null);
     const burpeeStep = useRef(0);
@@ -79,6 +80,22 @@ function BurnoutsSession({ userId, muscleGroup }) {
         }
     }, []);
 
+    useEffect(() => {
+        let timer;
+        if (cooldown > 0) {
+            timer = setInterval(() => {
+                setCooldown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [cooldown]);
+
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
         const secs = (seconds % 60).toString().padStart(2, '0');
@@ -92,20 +109,21 @@ function BurnoutsSession({ userId, muscleGroup }) {
 
     const completeCard = useCallback(() => {
         setFeedback("TARGET REACHED! 💪");
-        if (!isMuted) speak("Target reached");
+        if (!isMuted) speak("Target reached. 15 second cooldown starting.");
         setTimeout(() => {
             setCurrentCardIndex(prevIndex => {
                 const nextIndex = prevIndex + 1;
                 if (nextIndex < deck.length) {
+                    setCooldown(15);
                     setCurrentReps(0);
                     exerciseState.current = 'UP';
                     lastHighKneeLeg.current = null;
                     burpeeStep.current = 0;
                     baseY.current = null;
                     plankStartTime.current = null;
-                    setFeedback("Get Ready");
+                    setFeedback(`Get Ready: 15s`);
                     setMovementState('IDLE');
-                    if (!isMuted) speak(deck[nextIndex].exercise);
+                    if (!isMuted) speak(`Next exercise: ${deck[nextIndex].exercise}. Get into position.`);
                     return nextIndex;
                 } else {
                     setSessionActive(false);
@@ -140,7 +158,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
     }, [currentReps, currentCard, totalReps, ticketsEarned, isMuted, userId, muscleGroup, completeCard]);
 
     const processPose = useCallback((landmarks) => {
-        if (!currentCard || !sessionActive) return;
+        if (!currentCard || !sessionActive || cooldown > 0) return;
 
         const exerciseId = currentCard.exercise.toLowerCase().replace(/[\s-]/g, '');
         let repIncrement = 0;
@@ -415,8 +433,8 @@ function BurnoutsSession({ userId, muscleGroup }) {
                         <span className="label">REPS</span>
                     </div>
                     <div className="feedback-box">
-                        <div className="state-indicator">{movementState}</div>
-                        <div className="sub-text">{feedback}</div>
+                        <div className="state-indicator">{cooldown > 0 ? 'COOLDOWN' : movementState}</div>
+                        <div className="sub-text">{cooldown > 0 ? `Get Ready: ${cooldown}s` : feedback}</div>
                     </div>
                 </div>
 
