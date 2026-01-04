@@ -41,26 +41,26 @@ export function shuffleDeck(muscleGroup) {
   return deck;
 }
 
-export async function updateUserStats(userId, totalReps, diceEarned, muscleGroup) {
+export async function updateUserStats(userId, totalReps, ticketsEarned, muscleGroup) {
   const userRef = doc(db, "users", userId);
   const userSnap = await getDoc(userRef);
 
   if (userSnap.exists()) {
     await updateDoc(userRef, {
       totalReps,
-      diceBalance: diceEarned,
+      ticketBalance: ticketsEarned,
       [`leaderboard.${muscleGroup}`]: arrayUnion(totalReps),
     });
   } else {
     await setDoc(userRef, {
       totalReps,
-      diceBalance: diceEarned,
+      ticketBalance: ticketsEarned,
       leaderboard: { [muscleGroup]: [totalReps] },
     });
   }
 }
 
-export async function finalizeSession(userId, totalReps, diceEarned, muscleGroup) {
+export async function finalizeSession(userId, totalReps, ticketsEarned, muscleGroup) {
   const userRef = doc(db, "users", userId);
   const userSnap = await getDoc(userRef);
 

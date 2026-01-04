@@ -75,31 +75,32 @@ ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
                             const connections = [
                                 [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], 
                                 [11, 23], [12, 24], [23, 24], 
-                                [23, 25], [25, 27], [24, 26], [26, 28], 
-                                [27, 31], [28, 32], [27, 29], [28, 30] 
+                                [23, 25], [25, 27], [24, 26], [26, 28]
                             ];
 
-                            ctx.strokeStyle = '#00FF88';
-                            ctx.lineWidth = 4;
+                            const skeletonColor = results.poseLandmarks ? '#00ff88' : '#ff4444';
+                            ctx.strokeStyle = skeletonColor;
+                            ctx.lineWidth = 3;
                             ctx.lineCap = 'round';
                             ctx.lineJoin = 'round';
                             
+                            ctx.beginPath();
                             connections.forEach(([i, j]) => {
                                 const p1 = results.poseLandmarks[i];
                                 const p2 = results.poseLandmarks[j];
                                 if (p1 && p2 && p1.visibility > 0.1 && p2.visibility > 0.1) {
-                                    ctx.beginPath();
                                     ctx.moveTo(p1.x * canvas.width, p1.y * canvas.height);
                                     ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
-                                    ctx.stroke();
                                 }
                             });
+                            ctx.stroke();
 
                             if (window.drawLandmarks) {
                                 window.drawLandmarks(ctx, results.poseLandmarks, {
-                                    color: '#FF4444',
+                                    color: '#ffffff',
+                                    fillColor: skeletonColor,
                                     lineWidth: 1,
-                                    radius: 3
+                                    radius: 2
                                 });
                             }
 

@@ -39,7 +39,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
     const [currentCardIndex, setCurrentCardIndex] = useState(0);
     const [totalReps, setTotalReps] = useState(0);
     const [currentReps, setCurrentReps] = useState(0);
-    const [diceEarned, setDiceEarned] = useState(0);
+    const [ticketsEarned, setTicketsEarned] = useState(0);
     const [sessionActive, setSessionActive] = useState(true);
     const [feedback, setFeedback] = useState("Get Ready");
     const [movementState, setMovementState] = useState('IDLE');
@@ -101,10 +101,10 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 if (!isMuted) speak(deck[currentCardIndex + 1].exercise);
             } else {
                 setSessionActive(false);
-                finalizeSession(userId, totalReps, diceEarned, muscleGroup);
+                finalizeSession(userId, totalReps, ticketsEarned, muscleGroup);
             }
         }, 1500);
-    }, [currentCardIndex, deck, isMuted, userId, totalReps, diceEarned, muscleGroup]);
+    }, [currentCardIndex, deck, isMuted, userId, totalReps, ticketsEarned, muscleGroup]);
 
     const handleRep = useCallback((inc) => {
         const next = currentReps + inc;
@@ -118,10 +118,10 @@ function BurnoutsSession({ userId, muscleGroup }) {
         const newTotalReps = totalReps + inc;
         setTotalReps(newTotalReps);
         
-        const newDice = Math.floor(newTotalReps / 30);
-        if (newDice > diceEarned) {
-            setDiceEarned(newDice);
-            updateUserStats(userId, newTotalReps, newDice, muscleGroup);
+        const newTickets = Math.floor(newTotalReps / 30);
+        if (newTickets > ticketsEarned) {
+            setTicketsEarned(newTickets);
+            updateUserStats(userId, newTotalReps, newTickets, muscleGroup);
         }
 
         if (Math.floor(next) > Math.floor(currentReps) && !isMuted) {
@@ -388,8 +388,8 @@ function BurnoutsSession({ userId, muscleGroup }) {
                             <span className="stat-value">{Math.floor(totalReps)}</span>
                         </div>
                         <div className="stat-item">
-                            <span className="stat-label">DICE</span>
-                            <span className="stat-value">{diceEarned}</span>
+                            <span className="stat-label">TICKETS</span>
+                            <span className="stat-value">{ticketsEarned}</span>
                         </div>
                         <div className="stat-item">
                             <span className="stat-label">TIME</span>
