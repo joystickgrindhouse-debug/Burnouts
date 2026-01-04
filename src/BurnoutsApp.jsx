@@ -75,10 +75,10 @@ function BurnoutsSession({ userId, muscleGroup }) {
     }, [sessionActive]);
 
     useEffect(() => {
-        if (deck.length > 0 && sessionActive) {
+        if (deck.length > 0 && sessionActive && cooldown === 0) {
             speak(`Start with ${deck[currentCardIndex].exercise}, ${deck[currentCardIndex].reps} reps.`);
         }
-    }, []);
+    }, [currentCardIndex, cooldown]);
 
     useEffect(() => {
         let timer;
@@ -127,7 +127,6 @@ function BurnoutsSession({ userId, muscleGroup }) {
                     plankStartTime.current = null;
                     setFeedback(`Get Ready: 15s`);
                     setMovementState('IDLE');
-                    if (!isMuted) speak(`Next exercise: ${deck[nextIndex].exercise}, ${deck[nextIndex].reps} reps. Get into position.`);
                     return nextIndex;
                 } else {
                     setSessionActive(false);
