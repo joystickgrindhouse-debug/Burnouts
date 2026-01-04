@@ -73,6 +73,12 @@ function BurnoutsSession({ userId, muscleGroup }) {
         return () => clearInterval(interval);
     }, [sessionActive]);
 
+    useEffect(() => {
+        if (deck.length > 0 && sessionActive) {
+            speak(deck[currentCardIndex].exercise);
+        }
+    }, []);
+
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
         const secs = (seconds % 60).toString().padStart(2, '0');
@@ -88,23 +94,27 @@ function BurnoutsSession({ userId, muscleGroup }) {
         setFeedback("TARGET REACHED! 💪");
         if (!isMuted) speak("Target reached");
         setTimeout(() => {
-            if (currentCardIndex + 1 < deck.length) {
-                setCurrentCardIndex(prev => prev + 1);
-                setCurrentReps(0);
-                exerciseState.current = 'UP';
-                lastHighKneeLeg.current = null;
-                burpeeStep.current = 0;
-                baseY.current = null;
-                plankStartTime.current = null;
-                setFeedback("Get Ready");
-                setMovementState('IDLE');
-                if (!isMuted) speak(deck[currentCardIndex + 1].exercise);
-            } else {
-                setSessionActive(false);
-                finalizeSession(userId, totalReps, ticketsEarned, muscleGroup);
-            }
+            setCurrentCardIndex(prevIndex => {
+                const nextIndex = prevIndex + 1;
+                if (nextIndex < deck.length) {
+                    setCurrentReps(0);
+                    exerciseState.current = 'UP';
+                    lastHighKneeLeg.current = null;
+                    burpeeStep.current = 0;
+                    baseY.current = null;
+                    plankStartTime.current = null;
+                    setFeedback("Get Ready");
+                    setMovementState('IDLE');
+                    if (!isMuted) speak(deck[nextIndex].exercise);
+                    return nextIndex;
+                } else {
+                    setSessionActive(false);
+                    finalizeSession(userId, totalReps, ticketsEarned, muscleGroup);
+                    return prevIndex;
+                }
+            });
         }, 1500);
-    }, [currentCardIndex, deck, isMuted, userId, totalReps, ticketsEarned, muscleGroup]);
+    }, [deck, isMuted, userId, totalReps, ticketsEarned, muscleGroup]);
 
     const handleRep = useCallback((inc) => {
         const next = currentReps + inc;
