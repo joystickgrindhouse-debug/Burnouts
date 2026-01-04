@@ -74,11 +74,16 @@ function BurnoutsSession({ userId, muscleGroup }) {
         return () => clearInterval(interval);
     }, [sessionActive]);
 
+    const lastAnnouncedCardIndex = useRef(-1);
+
     useEffect(() => {
         if (deck.length > 0 && sessionActive && cooldown === 0) {
-            speak(`Start with ${deck[currentCardIndex].exercise}, ${deck[currentCardIndex].reps} reps.`);
+            if (lastAnnouncedCardIndex.current !== currentCardIndex) {
+                speak(`Start with ${deck[currentCardIndex].exercise}, ${deck[currentCardIndex].reps} reps.`);
+                lastAnnouncedCardIndex.current = currentCardIndex;
+            }
         }
-    }, [currentCardIndex, cooldown]);
+    }, [currentCardIndex, cooldown, sessionActive, deck]);
 
     useEffect(() => {
         let timer;
