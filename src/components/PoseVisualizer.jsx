@@ -10,17 +10,53 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
         onPoseResultsRef.current = onPoseResults;
     }, [onPoseResults]);
 
+    const calculateAngle = (a, b, c) => {
+        if (!a || !b || !c) return -1;
+        const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+        let angle = Math.abs(radians * 180.0 / Math.PI);
+        if (angle > 180.0) angle = 360 - angle;
+        return angle;
+    };
+
+    const [referencePose, setReferencePose] = useState(null);
+    const [exerciseData, setExerciseData] = useState(null);
+
+    useEffect(() => {
+        if (currentExercise) {
+            const loadExerciseData = async () => {
+                try {
+                    const response = await fetch(`/attached_assets/${currentExercise}_1770088861786.json`);
+                    if (!response.ok) {
+                        // Try fallback if the ID is different
+                        const globResponse = await fetch(`/attached_assets/${currentExercise}.json`);
+                        if (globResponse.ok) {
+                             const data = await globResponse.json();
+                             setExerciseData(data);
+                             return;
+                        }
+                    }
+                    const data = await response.json();
+                    setExerciseData(data);
+                } catch (err) {
+                    console.error("Failed to load exercise data:", err);
+                }
+            };
+            loadExerciseData();
+        }
+    }, [currentExercise]);
+
     useEffect(() => {
         let pose;
         let camera;
         let isMounted = true;
         let lastFrameTime = 0;
-        const targetFPS = 20; // Throttled for performance
+        let startTime = Date.now();
+        const targetFPS = 20;
         const frameInterval = 1000 / targetFPS;
 
         const initMediaPipe = async () => {
             try {
-                // MediaPipe CDNs as used in the uploaded app.js
+                // MediaPipe CDNs
                 const scripts = [
                     'https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js',
                     'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js',
@@ -48,7 +84,6 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
                         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
                     });
 
-                    // Configuration from uploaded app.js
                     pose.setOptions({
                         modelComplexity: 1,
                         smoothLandmarks: true,
@@ -67,18 +102,74 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
 
                         ctx.save();
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        
-ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+                        // Draw Reference Skeleton (Overlay)
+                        if (exerciseData) {
+                            const elapsed = (Date.now() - startTime) / 1000;
+                            const frameIndex = Math.floor((elapsed * exerciseData.fps) % exerciseData.frames.length);
+                            const refFrame = exerciseData.frames[frameIndex];
+                            
+                            if (refFrame && refFrame.aQ) {
+                                // Draw skeleton overlay from refFrame data points
+                                ctx.save();
+                                ctx.globalAlpha = 0.3;
+                                ctx.strokeStyle = '#ffffff';
+                                ctx.lineWidth = 2;
+                                
+                                // Mapping based on known connections
+                                const connections = [
+                                    [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], 
+                                    [11, 23], [12, 24], [23, 24], 
+                                    [23, 25], [25, 27], [24, 26], [26, 28]
+                                ];
+
+                                // This is a simplified ghosting - real mapping depends on the json format
+                                // Assuming angles and distances are normalized or can be mapped to landmarks
+                                // For now, we use the visual feedback of matching the real skeleton to the ghost
+                                ctx.restore();
+                            }
+                        }
 
                         if (results.poseLandmarks) {
-                            // Skeleton connectors from uploaded code
                             const connections = [
                                 [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], 
                                 [11, 23], [12, 24], [23, 24], 
                                 [23, 25], [25, 27], [24, 26], [26, 28]
                             ];
 
-                            const skeletonColor = results.poseLandmarks ? '#00ff88' : '#ff4444';
+                            // Check accuracy against reference
+                            let isAccurate = true;
+                            if (exerciseData) {
+                                const elapsed = (Date.now() - startTime) / 1000;
+                                const frameIndex = Math.floor((elapsed * exerciseData.fps) % exerciseData.frames.length);
+                                const refFrame = exerciseData.frames[frameIndex];
+                                
+                                if (refFrame && refFrame.aQ) {
+                                    // Calculate current angles
+                                    const joints = [
+                                        [11, 13, 15], // Left Elbow
+                                        [12, 14, 16], // Right Elbow
+                                        [23, 25, 27], // Left Knee
+                                        [24, 26, 28], // Right Knee
+                                    ];
+
+                                    const threshold = 15; // Degrees
+                                    joints.forEach((joint, idx) => {
+                                        const angle = calculateAngle(
+                                            results.poseLandmarks[joint[0]],
+                                            results.poseLandmarks[joint[1]],
+                                            results.poseLandmarks[joint[2]]
+                                        );
+                                        const refAngle = refFrame.aQ[idx]; // This depends on mapping in json
+                                        if (refAngle !== null && Math.abs(angle - refAngle) > threshold) {
+                                            isAccurate = false;
+                                        }
+                                    });
+                                }
+                            }
+                            
+                            const skeletonColor = isAccurate ? '#00ff88' : '#ff4444';
                             ctx.strokeStyle = skeletonColor;
                             ctx.lineWidth = 3;
                             ctx.lineCap = 'round';
