@@ -104,32 +104,31 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
-                        // Draw Reference Skeleton (Overlay)
-                        if (exerciseData) {
-                            const elapsed = (Date.now() - startTime) / 1000;
-                            const frameIndex = Math.floor((elapsed * exerciseData.fps) % exerciseData.frames.length);
-                            const refFrame = exerciseData.frames[frameIndex];
-                            
-                            if (refFrame && refFrame.aQ) {
-                                // Draw skeleton overlay from refFrame data points
-                                ctx.save();
-                                ctx.globalAlpha = 0.3;
-                                ctx.strokeStyle = '#ffffff';
-                                ctx.lineWidth = 2;
+                            // Draw Reference Skeleton (Overlay)
+                            if (exerciseData) {
+                                const elapsed = (Date.now() - startTime) / 1000;
+                                const frameIndex = Math.floor((elapsed * exerciseData.fps) % exerciseData.frames.length);
+                                const refFrame = exerciseData.frames[frameIndex];
                                 
-                                // Mapping based on known connections
-                                const connections = [
-                                    [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], 
-                                    [11, 23], [12, 24], [23, 24], 
-                                    [23, 25], [25, 27], [24, 26], [26, 28]
-                                ];
+                                if (refFrame && refFrame.aQ) {
+                                    ctx.save();
+                                    ctx.globalAlpha = 0.4;
+                                    ctx.strokeStyle = '#ffffff';
+                                    ctx.lineWidth = 4;
+                                    ctx.setLineDash([5, 5]); // Dashed line for ghost
+                                    
+                                    const connections = [
+                                        [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], 
+                                        [11, 23], [12, 24], [23, 24], 
+                                        [23, 25], [25, 27], [24, 26], [26, 28]
+                                    ];
 
-                                // This is a simplified ghosting - real mapping depends on the json format
-                                // Assuming angles and distances are normalized or can be mapped to landmarks
-                                // For now, we use the visual feedback of matching the real skeleton to the ghost
-                                ctx.restore();
+                                    // Since we don't have full landmark positions in the JSON (only angles/dists),
+                                    // we can't draw a full ghost without a forward kinematics model.
+                                    // For now, we provide visual feedback via the skeleton color.
+                                    ctx.restore();
+                                }
                             }
-                        }
 
                         if (results.poseLandmarks) {
                             const connections = [
