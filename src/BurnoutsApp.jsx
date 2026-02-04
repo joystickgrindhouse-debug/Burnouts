@@ -169,10 +169,26 @@ function BurnoutsSession({ userId, muscleGroup }) {
     const processPose = useCallback((landmarks) => {
         if (!currentCard || !sessionActive || cooldown > 0 || !landmarks) return;
 
-    const exerciseId = currentCard.exercise.toLowerCase();
+        // Prevent false positives from facial movements (like picking nose) 
+        // by checking if wrists are near the head for exercises that don't involve head-hand contact
+        const nose = landmarks[0];
+        const leftWrist = landmarks[15];
+        const rightWrist = landmarks[16];
+        const isHandNearHead = (calculateDistance(leftWrist, nose) < 0.1 || calculateDistance(rightWrist, nose) < 0.1);
+
+        const exerciseId = currentCard.exercise.toLowerCase();
         let repIncrement = 0;
         let newFeedback = feedback;
         let newState = movementState;
+
+        // Skip rep counting if hands are near head and it's not a relevant exercise
+        const sensitiveExercises = ['pushups', 'squats', 'lunges', 'jumpingjacks', 'calfraises', 'burpees', 'highknees'];
+        if (isHandNearHead && sensitiveExercises.includes(exerciseId)) {
+            if (newFeedback !== 'Keep hands away from face') {
+                setFeedback('Keep hands away from face');
+            }
+            return;
+        }
 
         switch (exerciseId) {
             case 'pushups':
