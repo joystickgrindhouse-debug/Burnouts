@@ -473,27 +473,31 @@ function BurnoutsSession({ userId, muscleGroup }) {
 
                 {sessionActive && currentCard && (
                     <div className="card-display">
-                        <PoseVisualizer 
-                            onPoseResults={processPose} 
-                            currentExercise={currentCard.exerciseId} 
-                        />
-                        <div className="card-header">
-                            <span>{getSuitSymbol(currentCard.suit)}</span>
-                            <span>{currentCard.face}</span>
+                        <div className="video-feedback-container">
+                            <PoseVisualizer 
+                                onPoseResults={processPose} 
+                                currentExercise={currentCard.exerciseId} 
+                            />
                         </div>
-                        <div className="card-body">
-                            <h2 id="card-exercise-name">{currentCard.exercise.toUpperCase()}</h2>
-                            <div className="reps-countdown">
-                                <span className="reps-left">{Math.max(0, currentCard.reps - Math.floor(currentReps))}</span>
-                                <span className="reps-label">REPS LEFT</span>
+                        <div className="card-content">
+                            <div className="card-header">
+                                <span>{getSuitSymbol(currentCard.suit)}</span>
+                                <span>{currentCard.face}</span>
                             </div>
-                            <div className="progress-container">
-                                <div 
-                                    className="progress-bar" 
-                                    style={ { width: `${(currentReps / currentCard.reps) * 100}%` } }
-                                ></div>
+                            <div className="card-body">
+                                <h2 id="card-exercise-name">{currentCard.exercise.toUpperCase()}</h2>
+                                <div className="reps-countdown">
+                                    <span className="reps-left">{Math.max(0, currentCard.reps - Math.floor(currentReps))}</span>
+                                    <span className="reps-label">REPS LEFT</span>
+                                </div>
+                                <div className="progress-container">
+                                    <div 
+                                        className="progress-bar" 
+                                        style={ { width: `${(currentReps / currentCard.reps) * 100}%` } }
+                                    ></div>
+                                </div>
+                                <span className="target-text">TARGET: {currentCard.reps}</span>
                             </div>
-                            <span className="target-text">TARGET: {currentCard.reps}</span>
                         </div>
                     </div>
                 )}
