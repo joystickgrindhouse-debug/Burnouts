@@ -3,10 +3,10 @@ import { doc, updateDoc, arrayUnion, getDoc, setDoc } from "firebase/firestore";
 
 export function shuffleDeck(muscleGroup) {
   const exercisesMap = {
-    Arms: ["Push-ups", "Plank Up-Downs", "Pike Push ups", "Shoulder Taps"],
-    Legs: ["Squats", "Lunges", "Glute Bridges", "Calf Raises"],
-    Core: ["Crunches", "Plank", "Russian Twists", "Leg Raises"],
-    "Full Body": ["Jumping Jacks", "High Knees", "Burpees", "Mountain Climbers"],
+    Arms: ["Pushups", "PlankUpDowns", "PikePushups", "ShoulderTaps"],
+    Legs: ["Squats", "Lunges", "GluteBridges", "CalfRaises"],
+    Core: ["Crunches", "Plank", "RussianTwists", "LegRaises"],
+    "Full Body": ["JumpingJacks", "HighKnees", "Burpees", "MountainClimbers"],
   };
 
   const suits = ["Spades", "Hearts", "Diamonds", "Clubs"];

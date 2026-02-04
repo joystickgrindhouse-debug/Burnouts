@@ -35,6 +35,7 @@ export default function BurnoutsApp() {
 }
 
 function BurnoutsSession({ userId, muscleGroup }) {
+    const navigate = useNavigate();
     const [deck, setDeck] = useState(shuffleDeck(muscleGroup));
     const [currentCardIndex, setCurrentCardIndex] = useState(0);
     const [totalReps, setTotalReps] = useState(0);
@@ -168,7 +169,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
     const processPose = useCallback((landmarks) => {
         if (!currentCard || !sessionActive || cooldown > 0 || !landmarks) return;
 
-        const exerciseId = currentCard.exercise.toLowerCase().replace(/[\s-]/g, '').replace(/-/g, '');
+    const exerciseId = currentCard.exercise.toLowerCase();
         let repIncrement = 0;
         let newFeedback = feedback;
         let newState = movementState;
