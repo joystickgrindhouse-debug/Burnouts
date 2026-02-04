@@ -9,6 +9,25 @@ export function shuffleDeck(muscleGroup) {
     "Full Body": ["JumpingJacks", "HighKnees", "Burpees", "MountainClimbers"],
   };
 
+  const exerciseFileMap = {
+    "Pushups": "pushups",
+    "PlankUpDowns": "plank_updowns",
+    "PikePushups": "pike_pushups",
+    "ShoulderTaps": "shoulder_taps",
+    "Squats": "squats",
+    "Lunges": "lunges",
+    "GluteBridges": "glute_bridges",
+    "CalfRaises": "calf_raises",
+    "Crunches": "crunches",
+    "Plank": "plank",
+    "RussianTwists": "russian_twists",
+    "LegRaises": "leg_raises",
+    "JumpingJacks": "jumping_jacks",
+    "HighKnees": "high_knees",
+    "Burpees": "burpees",
+    "MountainClimbers": "mountain_climbers"
+  };
+
   const suits = ["Spades", "Hearts", "Diamonds", "Clubs"];
   const faceValues = [2, 3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K", "A"];
   let deck = [];
@@ -30,6 +49,7 @@ export function shuffleDeck(muscleGroup) {
         face, 
         reps, 
         exercise, 
+        exerciseId: exerciseFileMap[exercise] || exercise.toLowerCase(),
         category: muscleGroup 
       });
     });

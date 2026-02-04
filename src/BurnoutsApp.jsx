@@ -473,6 +473,10 @@ function BurnoutsSession({ userId, muscleGroup }) {
 
                 {sessionActive && currentCard && (
                     <div className="card-display">
+                        <PoseVisualizer 
+                            onPoseResults={processPose} 
+                            currentExercise={currentCard.exerciseId} 
+                        />
                         <div className="card-header">
                             <span>{getSuitSymbol(currentCard.suit)}</span>
                             <span>{currentCard.face}</span>
@@ -496,7 +500,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
             </div>
 
             <div className="camera-panel">
-                <PoseVisualizer onPoseResults={processPose} />
+                {/* Visualizer moved into card-display for better overlay context if needed, or kept here */}
             </div>
         </div>
     );

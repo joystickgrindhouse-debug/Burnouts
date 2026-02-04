@@ -25,14 +25,21 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
         if (currentExercise) {
             const loadExerciseData = async () => {
                 try {
-                    const response = await fetch(`/attached_assets/${currentExercise}_1770088861786.json`);
+                    // Normalize filename to match the pattern in attached_assets
+                    const filename = currentExercise.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+                    const response = await fetch(`/attached_assets/${filename}_1770088861789.json`);
                     if (!response.ok) {
-                        // Try fallback if the ID is different
-                        const globResponse = await fetch(`/attached_assets/${currentExercise}.json`);
-                        if (globResponse.ok) {
-                             const data = await globResponse.json();
-                             setExerciseData(data);
-                             return;
+                        const altResponse = await fetch(`/attached_assets/${filename}_1770088861786.json`);
+                        if (altResponse.ok) {
+                            const data = await altResponse.json();
+                            setExerciseData(data);
+                            return;
+                        }
+                        const rawResponse = await fetch(`/attached_assets/${filename}.json`);
+                        if (rawResponse.ok) {
+                            const data = await rawResponse.json();
+                            setExerciseData(data);
+                            return;
                         }
                     }
                     const data = await response.json();
@@ -153,14 +160,14 @@ export default function PoseVisualizer({ onPoseResults, currentExercise }) {
                                         [24, 26, 28], // Right Knee
                                     ];
 
-                                    const threshold = 15; // Degrees
+                                    const threshold = 20; // Degrees threshold for master JSON
                                     joints.forEach((joint, idx) => {
                                         const angle = calculateAngle(
                                             results.poseLandmarks[joint[0]],
                                             results.poseLandmarks[joint[1]],
                                             results.poseLandmarks[joint[2]]
                                         );
-                                        const refAngle = refFrame.aQ[idx]; // This depends on mapping in json
+                                        const refAngle = refFrame.aQ[idx];
                                         if (refAngle !== null && Math.abs(angle - refAngle) > threshold) {
                                             isAccurate = false;
                                         }
