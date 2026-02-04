@@ -479,6 +479,10 @@ function BurnoutsSession({ userId, muscleGroup }) {
                         </div>
                         <div className="card-body">
                             <h2 id="card-exercise-name">{currentCard.exercise.toUpperCase()}</h2>
+                            <div className="reps-countdown">
+                                <span className="reps-left">{Math.max(0, currentCard.reps - Math.floor(currentReps))}</span>
+                                <span className="reps-label">REPS LEFT</span>
+                            </div>
                             <div className="progress-container">
                                 <div 
                                     className="progress-bar" 
