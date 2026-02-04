@@ -15,9 +15,11 @@ export function shuffleDeck(muscleGroup) {
 
   const exerciseList = exercisesMap[muscleGroup] || exercisesMap["Arms"];
 
-  suits.forEach((suit) => {
+  suits.forEach((suit, suitIndex) => {
+    // Each suit is assigned one of the 4 exercises for the muscle group
+    const exercise = exerciseList[suitIndex % exerciseList.length];
+    
     faceValues.forEach((face) => {
-      const exercise = exerciseList[Math.floor(Math.random() * exerciseList.length)];
       const reps = typeof face === "number" ? face : 
                    face === "J" ? 11 : 
                    face === "Q" ? 12 : 
