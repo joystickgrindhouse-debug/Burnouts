@@ -413,6 +413,12 @@ function BurnoutsSession({ userId, muscleGroup }) {
         if (newState !== movementState) setMovementState(newState);
     }, [currentCard, sessionActive, feedback, movementState, currentReps, handleRep]);
 
+    const handleStopSession = useCallback(() => {
+        setSessionActive(false);
+        finalizeSession(userId, totalReps, ticketsEarned, muscleGroup);
+        navigate('/burnouts');
+    }, [navigate, userId, totalReps, ticketsEarned, muscleGroup]);
+
     return (
         <div className="burnouts-container">
             <div className="ui-layer">
@@ -461,7 +467,7 @@ function BurnoutsSession({ userId, muscleGroup }) {
                 </div>
 
                 <div className="controls">
-                    <button className="primary-btn" onClick={() => navigate('/burnouts')}>STOP SESSION</button>
+                    <button className="primary-btn" onClick={handleStopSession}>STOP SESSION</button>
                 </div>
 
                 {sessionActive && currentCard && (
