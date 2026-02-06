@@ -30,8 +30,20 @@ function speak(text) {
 
 export default function BurnoutsApp() {
     const { muscleGroup } = useParams();
-    const userId = "hub_user";
-    return <BurnoutsSession userId={userId} muscleGroup={muscleGroup} />;
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        return onAuthStateChanged(auth, (u) => {
+            setUser(u);
+            setLoading(false);
+        });
+    }, []);
+
+    if (loading) return <div className="loading">Loading session...</div>;
+    if (!user) return <div className="auth-error">Authentication required from Rivalis Hub</div>;
+
+    return <BurnoutsSession userId={user.uid} muscleGroup={muscleGroup} />;
 }
 
 function BurnoutsSession({ userId, muscleGroup }) {

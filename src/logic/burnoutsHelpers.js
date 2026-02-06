@@ -67,18 +67,28 @@ export async function updateUserStats(userId, totalReps, ticketsEarned, muscleGr
   const userRef = doc(db, "users", userId);
   const userSnap = await getDoc(userRef);
 
+  const stats = {
+    totalReps,
+    ticketBalance: ticketsEarned,
+    [`leaderboard.${muscleGroup}`]: arrayUnion(totalReps),
+    lastUpdated: new Date().toISOString()
+  };
+
   if (userSnap.exists()) {
-    await updateDoc(userRef, {
-      totalReps,
-      ticketBalance: ticketsEarned,
-      [`leaderboard.${muscleGroup}`]: arrayUnion(totalReps),
-    });
+    await updateDoc(userRef, stats);
   } else {
     await setDoc(userRef, {
-      totalReps,
-      ticketBalance: ticketsEarned,
+      ...stats,
       leaderboard: { [muscleGroup]: [totalReps] },
     });
+  }
+
+  // Notify parent hub if in iframe
+  if (window.parent !== window) {
+    window.parent.postMessage({
+      type: 'BURNOUTS_STATS_UPDATE',
+      payload: { userId, totalReps, ticketsEarned, muscleGroup }
+    }, '*');
   }
 }
 
@@ -90,5 +100,13 @@ export async function finalizeSession(userId, totalReps, ticketsEarned, muscleGr
     await updateDoc(userRef, {
       [`leaderboard.${muscleGroup}`]: arrayUnion(totalReps),
     });
+  }
+
+  // Notify parent hub of completion
+  if (window.parent !== window) {
+    window.parent.postMessage({
+      type: 'BURNOUTS_SESSION_COMPLETE',
+      payload: { userId, totalReps, ticketsEarned, muscleGroup }
+    }, '*');
   }
 }
